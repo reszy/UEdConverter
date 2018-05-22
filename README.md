@@ -6,8 +6,9 @@ Converts t3d files like brushes from Unreal Engine 1.5 to obj format and vice-ve
 
 ## How to
  - Open executable
- - Choose File as file which willbe converted
+ - Choose File as file which will be converted
  - Choose Destination as file where conversion will be saved
+ - Click Convert
 
 ```diff
 -!Conversion can broke some models. Overriding files is inadvisable!
