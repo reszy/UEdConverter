@@ -4,6 +4,10 @@
              xmlns:local="clr-namespace:UedConverter"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <SolidColorBrush x:Key="Bg" Color="#FF252526"/>
+        <SolidColorBrush x:Key="ButtonBg" Color="#FF3F3F46"/>
+        <SolidColorBrush x:Key="Border" Color="#FF434346"/>
+        <SolidColorBrush x:Key="Background" Color="#FF2D2D30"/>
+        <SolidColorBrush x:Key="Text" Color="#FFD8D8D8"/>
     </Application.Resources>
 </Application>

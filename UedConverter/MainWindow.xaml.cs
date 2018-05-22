@@ -146,5 +146,10 @@ namespace UedConverter
                     MessageBoxImage.Error
                     );
         }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            (new AboutWindow()).ShowDialog();
+        }
     }
 }

@@ -5,14 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UedConverter"
         mc:Ignorable="d"
-        Title="UedConverter" Height="327" Width="639" MaxHeight="327" MinWidth="499" MinHeight="327">
-    <Window.Resources>
-        <SolidColorBrush x:Key="Bg" Color="#FF252526"/>
-        <SolidColorBrush x:Key="ButtonBg" Color="#FF3F3F46"/>
-        <SolidColorBrush x:Key="Border" Color="#FF434346"/>
-        <SolidColorBrush x:Key="Background" Color="#FF2D2D30"/>
-        <SolidColorBrush x:Key="Text" Color="#FFD8D8D8"/>
-    </Window.Resources>
+        Title="UedConverter" Height="347" Width="639" MaxHeight="347" MinWidth="499" MinHeight="347">
     <Grid Background="{DynamicResource Background}">
         <GroupBox Header="T3D -> OBJ" Height="125" Margin="15,15,10,0" VerticalAlignment="Top" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" BorderThickness="1"/>
         <Button Content="File" Width="100" Height="25" Margin="34,42,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="U2O_File_Click"/>
@@ -27,5 +20,6 @@
         <TextBlock x:Name="O2U_File_Textbox" Height="25" Margin="145,182,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
         <TextBlock x:Name="O2U_Destination_Textbox" Height="25" Margin="145,215,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
         <Button Content="Convert" Height="25" Margin="180,245,211,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Center" Width="100" Click="O2U_Convert_Click"/>
+        <Button Content="?" Height="21" Margin="15,285,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Left" Width="25" Click="About_Click"/>
     </Grid>
 </Window>
