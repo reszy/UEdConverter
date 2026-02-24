@@ -6,20 +6,33 @@
         xmlns:local="clr-namespace:UedConverter"
         mc:Ignorable="d"
         Title="UedConverter" Height="347" Width="639" MaxHeight="347" MinWidth="499" MinHeight="347">
-    <Grid Background="{DynamicResource Background}">
-        <GroupBox Header="T3D -> OBJ" Height="125" Margin="15,15,10,0" VerticalAlignment="Top" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" BorderThickness="1"/>
-        <Button Content="File" Width="100" Height="25" Margin="34,42,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="U2O_File_Click"/>
-        <Button Content="Destination" Width="100" Height="25" Margin="34,75,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="U2O_Destination_Click"/>
-        <TextBlock x:Name="U2O_File_Textbox" Height="25" Margin="145,42,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="U2O_Destination_Textbox" Height="25" Margin="145,75,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}"  TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
-        <Button Content="Convert" Height="25" Margin="180,105,211,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Center" Width="100" Click="U2O_Convert_Click"/>
-
-        <GroupBox Header="OBJ -> T3D" Height="125" Margin="15,155,10,0" VerticalAlignment="Top" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}"/>
-        <Button Content="File" Width="100" Height="25" Margin="34,182,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="O2U_File_Click"/>
-        <Button Content="Destination" Width="100" Height="25" Margin="34,215,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="O2U_Destination_Click"/>
-        <TextBlock x:Name="O2U_File_Textbox" Height="25" Margin="145,182,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
-        <TextBlock x:Name="O2U_Destination_Textbox" Height="25" Margin="145,215,26,0" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
-        <Button Content="Convert" Height="25" Margin="180,245,211,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Center" Width="100" Click="O2U_Convert_Click"/>
-        <Button Content="?" Height="21" Margin="15,285,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Left" Width="25" Click="About_Click"/>
-    </Grid>
+    <StackPanel Background="{DynamicResource Background}">
+        <GroupBox Header="T3D -> OBJ" x:Name="U2O_Group" Margin="10,10,10,0" VerticalAlignment="Top" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" Background="{DynamicResource Background}" BorderThickness="1" Drop="File_Drop" AllowDrop="True" DragLeave="File_DragLeave" DragEnter="File_DragEnter">
+            <StackPanel HorizontalAlignment="Center" Width="600">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="File" Width="100" Height="25" Margin="4" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="U2O_File_Click"/>
+                    <TextBlock x:Name="U2O_File_Textbox" Height="25" Width="480" Margin="4" Padding="4" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Destination" Width="100" Height="25" Margin="4" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="U2O_Destination_Click"/>
+                    <TextBlock x:Name="U2O_Destination_Textbox" Height="25" Width="480" Margin="4" Padding="4" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}"  TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              <Button Content="Convert" Height="25" Margin="5,4,5,10" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Center" Width="100" Click="U2O_Convert_Click"/>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="OBJ -> T3D" x:Name="O2U_Group" Height="125" Margin="10,10,10,0" VerticalAlignment="Top" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" Background="{DynamicResource Background}" Drop="File_Drop" AllowDrop="True" DragLeave="File_DragLeave" DragEnter="File_DragEnter">
+            <StackPanel HorizontalAlignment="Center" Width="600">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="File" Width="100" Height="25" Margin="4" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="O2U_File_Click"/>
+                    <TextBlock x:Name="O2U_File_Textbox" Height="25" Width="480" Margin="4" Padding="4" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Destination" Width="100" Height="25" Margin="4" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" HorizontalAlignment="Left" VerticalAlignment="Top" Click="O2U_Destination_Click"/>
+                    <TextBlock x:Name="O2U_Destination_Textbox" Height="25" Width="480" Margin="4" Padding="4" Text="" VerticalAlignment="Top" Foreground="{DynamicResource Text}" Background="{DynamicResource Bg}" TextOptions.TextFormattingMode="Display" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Content="Convert" Height="25" Margin="5,4,5,10" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Center" Width="100" Click="O2U_Convert_Click"/>
+            </StackPanel>
+        </GroupBox>
+        <Button Content="?" Height="21" Margin="20,05,0,0" Background="{DynamicResource ButtonBg}" BorderBrush="{DynamicResource Border}" Foreground="{DynamicResource Text}" VerticalAlignment="Top" HorizontalAlignment="Left" Width="25" Click="About_Click"/>
+    </StackPanel>
 </Window>

@@ -98,6 +98,7 @@
     <Compile Include="Converter\U2O_Converter.cs" />
     <Compile Include="Converter\V3d.cs" />
     <Compile Include="StringValue.cs" />
+    <Compile Include="Version.cs" />
     <Page Include="AboutWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
