@@ -5,7 +5,7 @@ using static UedConverter.Converter.FileUtils.T3dFile;
 
 namespace UedConverter.Converter
 {
-    class U2O_Converter : IUedConverter
+    public class U2O_Converter : IUedConverter
     {
         private const char T3D_NUMBER_SEPARATOR = ',';
 
@@ -46,7 +46,7 @@ namespace UedConverter.Converter
             return file.Write();
         }
 
-        private void InvalidSynaxError(int line, string additional = "")
+        private void InvalidSyntaxError(int line, string additional = "")
         {
             additional = String.IsNullOrEmpty(additional) ? "" : additional;
             throw new ConvertionException("Invalid syntax on line " + (line + 1) + ". " + additional);
@@ -66,11 +66,14 @@ namespace UedConverter.Converter
 
         private List<Polygon> Read(string[] input)
         {
+            if (input[0].Trim().Contains(FileUtils.T3dFile.Begin(FileSyntax.T3d.MAP)))
+                throw new ConvertionException("Map t3d is not supported, as it doesn't contain calculated geometry.");
+
             if (!input[0].Trim().Contains(FileUtils.T3dFile.Begin(FileSyntax.T3d.POLY_LIST)))
-                InvalidSynaxError(0);
+                InvalidSyntaxError(0);
 
             if (!input[input.Length - 1].Trim().Contains(FileUtils.T3dFile.End(FileSyntax.T3d.POLY_LIST)))
-                InvalidSynaxError(input.Length - 1);
+                InvalidSyntaxError(input.Length - 1);
 
             for (int line = 1; line < input.Length; line++)
             {
@@ -108,13 +111,13 @@ namespace UedConverter.Converter
                         }
                         catch (Exception e)
                         {
-                            InvalidSynaxError(line, e.Message);
+                            InvalidSyntaxError(line, e.Message);
                         }
                         line++;
                     }
                     if (line >= input.Length)
                     {
-                        InvalidSynaxError(line, "Cannot find " + End(FileSyntax.T3d.POLYGON));
+                        InvalidSyntaxError(line, "Cannot find " + End(FileSyntax.T3d.POLYGON));
                     }
                 }
             }

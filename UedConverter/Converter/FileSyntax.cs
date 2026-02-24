@@ -23,6 +23,7 @@ namespace UedConverter.Converter
         public static class T3d
         {
             public const string POLY_LIST = "PolyList";
+            public const string MAP = "Map";
             public const string POLYGON = "Polygon";
             public const string ORIGIN = "Origin";
             public const string NORMAL = "Normal";

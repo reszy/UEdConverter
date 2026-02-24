@@ -29,7 +29,7 @@ namespace UedConverter
             InitializeComponent();
 
             titleLabel.Content = name;
-            versionLabel.Content = "v" + version.Major + "." + version.Minor;
+            versionLabel.Content = "v" + version.Major + "." + version.Minor + "." + version.Revision;
             string gitUrl = "https://github.com/reszy/UEdConverter/releases";
             gitLink.NavigateUri = new Uri(gitUrl);
             linkText.Text = gitUrl;
