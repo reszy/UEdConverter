@@ -102,7 +102,7 @@ namespace UedConverter.Converter.FileUtils
                 {
                     foreach(var (key, value) in additionalValues)
                     {
-                        if (string.IsNullOrEmpty(value))
+                        if (!string.IsNullOrEmpty(value))
                         {
                             line.Append(' ');
                             line.Append(key);
