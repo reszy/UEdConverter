@@ -99,7 +99,7 @@ namespace UedConverter.Converter
             };
 
 
-            var converter = new U2O_Converter();
+            var converter = new U2O_Converter(false);
             var exceptionThrown = false;
             try
             {

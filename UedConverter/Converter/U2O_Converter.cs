@@ -1,18 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using UedConverter.Converter.FileUtils;
+using UedConverter.UtxFile;
 using static UedConverter.Converter.FileUtils.T3dFile;
 
 namespace UedConverter.Converter
 {
     public class U2O_Converter : IUedConverter
     {
+        public U2O_Converter(bool loadTextureData)
+        {
+            textureData = loadTextureData ? TextureSizeDictionary.Load() : new Dictionary<string, USize>();
+            this.loadTextureData = loadTextureData;
+        }
+
         private const char T3D_NUMBER_SEPARATOR = ',';
 
+        private readonly Dictionary<string, USize> textureData;
+        private readonly bool loadTextureData;
         List<Polygon> loadedPolygons = new List<Polygon>();
+        public HashSet<string> MissingTextureData { get; private set; } = new HashSet<string>();
 
         public string[] Convert(string[] input)
         {
+            MissingTextureData = new HashSet<string>();
             List<Polygon> polygons = Read(input);
             return ConvertToObj(polygons);
         }
@@ -42,7 +53,7 @@ namespace UedConverter.Converter
                     {
                         number = file.Vertexes.IndexOf(foundVertex);
                     }
-                    file.TextureVertexes.Add(ConvertTextureSpace(vertex, polygon.Origin, polygon.TextureU, polygon.TextureV));
+                    file.TextureVertexes.Add(ConvertTextureSpace(vertex, polygon.Origin, polygon.TextureU, polygon.TextureV, polygon.Texture));
                     face.AddComponent(new ObjFile.Face.Component(number, vertexNumber, polygonNumber));
                     vertexNumber++;
                 }
@@ -52,11 +63,21 @@ namespace UedConverter.Converter
             return file.Write();
         }
 
-        private V2d ConvertTextureSpace(V3d vertex, V3d origin, V3d textureU, V3d textureV)
+        private V2d ConvertTextureSpace(V3d vertex, V3d origin, V3d textureU, V3d textureV, string textureName)
         {
-            //incorrect scaling implementation
-            var u = textureU.Dot(vertex - origin) / 64;
-            var v = textureV.Dot(vertex - origin) / 64;
+            var uScale = 64;
+            var vScale = 64;
+            if (textureData.TryGetValue(textureName, out var size))
+            {
+                uScale = size.Width;
+                vScale = size.Height;
+            }
+            else
+            {
+                MissingTextureData.Add(textureName);
+            }
+            var u = textureU.Dot(vertex - origin) / uScale;
+            var v = textureV.Dot(vertex - origin) / vScale;
             return new V2d(u, v);
         }
 
