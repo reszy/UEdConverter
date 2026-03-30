@@ -89,6 +89,10 @@
     <Compile Include="AboutWindow.xaml.cs">
       <DependentUpon>AboutWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Components\CenterFirstPanel.cs" />
+    <Compile Include="Components\FadingMark.xaml.cs">
+      <DependentUpon>FadingMark.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Converter\ConvertionException.cs" />
     <Compile Include="Converter\FileSyntax.cs" />
     <Compile Include="Converter\FileUtils\ObjFile.cs" />
@@ -99,8 +103,19 @@
     <Compile Include="Converter\V2d.cs" />
     <Compile Include="Converter\V3d.cs" />
     <Compile Include="StringValue.cs" />
+    <Compile Include="UtxFile\CustomTreeElement.cs" />
+    <Compile Include="UtxFile\TextureSizeDictionary.cs" />
+    <Compile Include="UtxFile\UtxReader.cs" />
+    <Compile Include="UtxFile\Structure.cs" />
+    <Compile Include="UtxWindow.xaml.cs">
+      <DependentUpon>UtxWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Version.cs" />
     <Page Include="AboutWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Components\FadingMark.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -116,6 +131,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="UtxWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -159,5 +178,6 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

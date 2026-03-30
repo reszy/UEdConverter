@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using UedConverter.Converter;
+using UedConverter.UtxFile;
 
 namespace UedConverter
 {
@@ -18,6 +21,7 @@ namespace UedConverter
             InitializeComponent();
             RegularColor = U2O_Destination_Textbox.Background;
             this.Title = this.Title + " - " + Version.GetVersion();
+            calculateTxSpaceChBox.IsEnabled = TextureSizeDictionary.IsAvailable();
         }
 
         enum FileType
@@ -76,7 +80,7 @@ namespace UedConverter
 
         private void U2O_Convert_Click(object sender, RoutedEventArgs e)
         {
-            if(String.IsNullOrEmpty(U2O_Destination_Path) || String.IsNullOrEmpty(U2O_File_Path))
+            if (String.IsNullOrEmpty(U2O_Destination_Path) || String.IsNullOrEmpty(U2O_File_Path))
             {
                 MessageBox.Show(
                     "Select File and Destination first",
@@ -86,8 +90,10 @@ namespace UedConverter
                     );
                 return;
             }
-
-            ReadConvertSave(U2O_Destination_Path, U2O_File_Path, new U2O_Converter());
+            if(ReadConvertSave(U2O_Destination_Path, U2O_File_Path, new U2O_Converter(calculateTxSpaceChBox.IsChecked ?? false)))
+            {
+                U2O_Mark.Show(TimeSpan.FromSeconds(2));
+            }
         }
 
         private void O2U_File_Click(object sender, RoutedEventArgs e)
@@ -118,16 +124,21 @@ namespace UedConverter
                     );
                 return;
             }
-            ReadConvertSave(O2U_Destination_Path, O2U_File_Path, new O2U_Converter());
+            if(ReadConvertSave(O2U_Destination_Path, O2U_File_Path, new O2U_Converter()))
+            {
+                O2U_Mark.Show(TimeSpan.FromSeconds(2));
+            }
         }
 
-        private void ReadConvertSave(string destination, string file, IUedConverter converter)
+        private bool ReadConvertSave(string destination, string file, IUedConverter converter)
         {
+            var success = false;
             try
             {
                 var contents = File.ReadAllLines(file);
                 var convertedFileContents = converter.Convert(contents);
                 File.WriteAllLines(destination, convertedFileContents);
+                success = true;
             }
             catch(ConvertionException e)
             {
@@ -137,6 +148,21 @@ namespace UedConverter
             {
                 ShowError("Something is no yes");
             }
+
+            if(converter is U2O_Converter u2o)
+            {
+                if (u2o.MissingTextureData.Count > 0)
+                {
+                    var result = MessageBox.Show($"Not all textures could be found in data file (total: {u2o.MissingTextureData.Count})." +
+                        $"\nExamples:\n{string.Join("\n", u2o.MissingTextureData.Take(4))}" +
+                        $"\n\nDo you wish to save all of them into log file?", "Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        File.WriteAllLines("UedConverterLog.txt", u2o.MissingTextureData);
+                    }
+                }
+            }
+            return success;
         }
 
         private void ShowError(string message)
@@ -185,7 +211,12 @@ namespace UedConverter
 
         private void About_Click(object sender, RoutedEventArgs e)
         {
-            (new AboutWindow()).ShowDialog();
+            new AboutWindow().ShowDialog();
+        }
+
+        private void OpenUtx_Click(object sender, RoutedEventArgs e)
+        {
+            new UtxWindow().ShowDialog();
         }
 
         private void File_DragEnter(object sender, DragEventArgs e)
