@@ -7,7 +7,7 @@ Converts t3d brush files from Unreal Engine 1.5 to obj format and vice-versa. Al
 - Both polygons and UV coordinates are preserved
 ### What it doesn't:
 - No texture handling. You need to export/import textures separately and assign correct textures to polygons manually
-- Program does not support map export/import as UEd uses CSG cuts and boolean operations and those are not precomputed in such export.
+- Program does not support map export/import as UEd uses CSG (boolean operations to create geometry) and those are not precomputed in such file.
 
 ---
 
@@ -48,3 +48,19 @@ Converts t3d brush files from Unreal Engine 1.5 to obj format and vice-versa. Al
 
 <img height="500px" src="./edit4.jpg" alt="imported file in blender" />
 
+## Texture support
+Experimental texture support is provided. If file `texture_dict.txt` is provided textures manually applied should have correct scaling (assuming correct texture is applied).
+
+### How to do it:
+Put the file `texture_dict.txt` in the same directory as exe
+
+### Example file:
+```
+Lantern2 64x64
+pmbLight3 64x64
+pmbLight3or 64x64
+pmbfloor-E 128x128
+```
+
+### What next?
+In the brush file there is no connection to the texture other than simplified name so the dictionary (texture name to its dimensions) is neccessary. An exctractor for these data is needed but the texture support will stay limited as I don't have capacity to further reverse engineer utx file format.
