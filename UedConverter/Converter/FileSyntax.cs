@@ -25,6 +25,13 @@ namespace UedConverter.Converter
             public const string POLY_LIST = "PolyList";
             public const string MAP = "Map";
             public const string POLYGON = "Polygon";
+
+            //POLYGON ATTRIBUTES
+            public const string P_TEXTURE = "Texture";
+            public const string P_LINK = "Link";
+            public const string P_FLAGS = "Flags";
+
+
             public const string ORIGIN = "Origin";
             public const string NORMAL = "Normal";
             public const string TEXTURE_U = "TextureU";

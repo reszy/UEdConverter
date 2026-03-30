@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Windows.Input;
 
 namespace UedConverter.Converter.FileUtils
 {
@@ -21,6 +23,7 @@ namespace UedConverter.Converter.FileUtils
             public V3d Normal { get; set; }
             public V3d TextureU { get; set; }
             public V3d TextureV { get; set; }
+            public string Texture { get; set; }
 
             public Polygon()
             {
@@ -29,6 +32,15 @@ namespace UedConverter.Converter.FileUtils
                 TextureU = new V3d();
                 TextureV = new V3d();
                 Vertexes = new List<V3d>();
+            }
+
+            public void ParseAttributes(string line)
+            {
+                var attributes = line.Trim().Split(' ');
+                foreach (var attribute in attributes)
+                {
+                    if (attribute.StartsWith(FileSyntax.T3d.P_TEXTURE)) Texture = attribute.Substring(FileSyntax.T3d.P_TEXTURE.Length + 1);
+                }
             }
 
             public override string ToString()
@@ -54,7 +66,7 @@ namespace UedConverter.Converter.FileUtils
 
             foreach (var polygon in polygonList)
             {
-                fileBuilder.StartPolygon();
+                fileBuilder.StartPolygon((FileSyntax.T3d.P_TEXTURE, polygon.Texture));
                 fileBuilder.AddParameter(FileSyntax.T3d.ORIGIN, polygon.Origin);
                 fileBuilder.AddParameter(FileSyntax.T3d.NORMAL, polygon.Normal);
                 fileBuilder.AddParameter(FileSyntax.T3d.TEXTURE_U, polygon.TextureU);
@@ -81,10 +93,25 @@ namespace UedConverter.Converter.FileUtils
                 };
             }
 
-            public FileBuilder StartPolygon()
+            public FileBuilder StartPolygon(params (string key, string value)[] additionalValues)
             {
-                string line = GenerateIndentationLevel(1) + Begin(FileSyntax.T3d.POLYGON);
-                lines.Add(line);
+                var line = new StringBuilder();
+                line.Append(GenerateIndentationLevel(1));
+                line.Append(Begin(FileSyntax.T3d.POLYGON));
+                if(additionalValues.Length > 0)
+                {
+                    foreach(var (key, value) in additionalValues)
+                    {
+                        if (string.IsNullOrEmpty(value))
+                        {
+                            line.Append(' ');
+                            line.Append(key);
+                            line.Append("=");
+                            line.Append(value);
+                        }
+                    }
+                }
+                lines.Add(line.ToString());
                 return this;
             }
 

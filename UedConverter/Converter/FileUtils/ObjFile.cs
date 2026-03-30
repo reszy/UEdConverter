@@ -10,33 +10,39 @@ namespace UedConverter.Converter.FileUtils
     {
         public string ObjectName { get; set; }
         public List<V3d> Vertexes { get; set; }
+        public List<V2d> TextureVertexes { get; set; }
         public List<V3d> VertexNormals { get; set; }
         public List<Face> Faces { get; set; }
 
         public class Face
         {
             public List<Component> faceComponents;
+            public string material;
 
             public class Component
             {
                 public int vertexRef;
+                public int vertexTextureRef;
                 public int vertexNormalRef;
 
-                public Component(int vertexRef, int vertexNormalRef)
+                public Component(int vertexRef, int vertexTextureRef, int vertexNormalRef)
                 {
                     this.vertexNormalRef = vertexNormalRef;
+                    this.vertexTextureRef = vertexTextureRef;
                     this.vertexRef = vertexRef;
                 }
             }
 
-            public Face()
+            public Face(string material = null)
             {
                 this.faceComponents = new List<Component>();
+                this.material = material;
             }
 
-            public Face(List<Component> faceComponents)
+            public Face(List<Component> faceComponents, string material)
             {
                 this.faceComponents = faceComponents;
+                this.material = material;
             }
 
             public void AddComponent(Component component)
@@ -44,9 +50,9 @@ namespace UedConverter.Converter.FileUtils
                 faceComponents.Add(component);
             }
 
-            public static Face Parse(string values)
+            public static Face Parse(string values, string material = null)
             {
-                Face face = new Face();
+                Face face = new Face(material);
                 string[] splitted = values.Trim().Split(' ');
                 foreach (var split in splitted)
                 {
@@ -56,7 +62,8 @@ namespace UedConverter.Converter.FileUtils
                         new Component
                         (
                             (String.IsNullOrEmpty(numbers[0])) ? 0 : Int32.Parse(numbers[0]),
-                            (String.IsNullOrEmpty(numbers[1])) ? 0 : Int32.Parse(numbers[1])
+                            (String.IsNullOrEmpty(numbers[1])) ? 0 : Int32.Parse(numbers[1]),
+                            (String.IsNullOrEmpty(numbers[2])) ? 0 : Int32.Parse(numbers[2])
                         )
                     );
                 }
@@ -68,6 +75,7 @@ namespace UedConverter.Converter.FileUtils
         {
             ObjectName = "Unnamed";
             Vertexes = new List<V3d>();
+            TextureVertexes = new List<V2d>();
             VertexNormals = new List<V3d>();
             Faces = new List<Face>();
         }
@@ -85,6 +93,10 @@ namespace UedConverter.Converter.FileUtils
             {
                 file.AddVertex(vertex);
             }
+            foreach (var textureVertex in TextureVertexes)
+            {
+                file.AddTextureVertex(textureVertex);
+            }
             foreach (var vertexNormal in VertexNormals)
             {
                 file.AddVertexNormal(vertexNormal);
@@ -100,6 +112,8 @@ namespace UedConverter.Converter.FileUtils
         class FileBuilder
         {
             private List<string> lines;
+
+            private string lastMaterialUsed;
 
             public FileBuilder(string objectName)
             {
@@ -117,6 +131,13 @@ namespace UedConverter.Converter.FileUtils
                 return this;
             }
 
+            public FileBuilder AddTextureVertex(V2d value)
+            {
+                string line = "vt " + WritePoint(value, 6);
+                lines.Add(line);
+                return this;
+            }
+
             public FileBuilder AddVertexNormal(V3d value)
             {
                 string line = "vn " + WritePoint(value, 4);
@@ -126,11 +147,19 @@ namespace UedConverter.Converter.FileUtils
 
             public FileBuilder AddFace(Face value)
             {
+                if (value.material != lastMaterialUsed)
+                {
+                    lines.Add($"{FileSyntax.Obj.MATERIAL} {value.material}"); 
+                    lastMaterialUsed = value.material;
+                }
+
                 string line = "f ";
                 foreach (var component in value.faceComponents)
                 {
                     line += ((component.vertexRef == 0) ? "" : component.vertexRef.ToString()) +
-                        "//" +
+                        "/" +
+                        ((component.vertexTextureRef == 0) ? "" : component.vertexTextureRef.ToString()) +
+                        "/" +
                         ((component.vertexNormalRef == 0) ? "" : component.vertexNormalRef.ToString()) +
                         " ";
                 }
@@ -152,6 +181,11 @@ namespace UedConverter.Converter.FileUtils
             public string WritePoint(V3d value, uint digits)
             {
                 return WriteDouble(value.X, digits) + " " + WriteDouble(value.Y, digits) + " " + WriteDouble(value.Z, digits);
+            }
+
+            public string WritePoint(V2d value, uint digits)
+            {
+                return WriteDouble(value.X, digits) + " " + WriteDouble(value.Y, digits);
             }
         }
     }

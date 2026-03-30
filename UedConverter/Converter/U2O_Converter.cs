@@ -23,9 +23,12 @@ namespace UedConverter.Converter
             {
                 ObjectName = "ConvertedObject"
             };
+            int polygonNumber = 1;
+            int vertexNumber = 1;
             foreach (var polygon in polygons)
             {
-                ObjFile.Face face = new ObjFile.Face();
+                ObjFile.Face face = new ObjFile.Face(polygon.Texture);
+                file.VertexNormals.Add(polygon.Normal);
                 foreach (var vertex in polygon.Vertexes)
                 {
                     var foundVertex = file.Vertexes.Find(v => v.Equals(vertex));
@@ -39,11 +42,22 @@ namespace UedConverter.Converter
                     {
                         number = file.Vertexes.IndexOf(foundVertex);
                     }
-                    face.AddComponent(new ObjFile.Face.Component(number, 0));
+                    file.TextureVertexes.Add(ConvertTextureSpace(vertex, polygon.Origin, polygon.TextureU, polygon.TextureV));
+                    face.AddComponent(new ObjFile.Face.Component(number, vertexNumber, polygonNumber));
+                    vertexNumber++;
                 }
                 file.AddFace(face);
+                polygonNumber++;
             }
             return file.Write();
+        }
+
+        private V2d ConvertTextureSpace(V3d vertex, V3d origin, V3d textureU, V3d textureV)
+        {
+            //incorrect scaling implementation
+            var u = textureU.Dot(vertex - origin) / 64;
+            var v = textureV.Dot(vertex - origin) / 64;
+            return new V2d(u, v);
         }
 
         private void InvalidSyntaxError(int line, string additional = "")
@@ -80,6 +94,7 @@ namespace UedConverter.Converter
                 if (input[line].Trim().Contains(FileUtils.T3dFile.Begin(FileSyntax.T3d.POLYGON)))
                 {
                     Polygon polygon = new Polygon();
+                    polygon.ParseAttributes(input[line]);
                     loadedPolygons.Add(polygon);
                     while (line < input.Length)
                     {

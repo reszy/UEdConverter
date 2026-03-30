@@ -96,6 +96,7 @@
     <Compile Include="Converter\IUedConverter.cs" />
     <Compile Include="Converter\O2U_Converter.cs" />
     <Compile Include="Converter\U2O_Converter.cs" />
+    <Compile Include="Converter\V2d.cs" />
     <Compile Include="Converter\V3d.cs" />
     <Compile Include="StringValue.cs" />
     <Compile Include="Version.cs" />
