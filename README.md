@@ -1,5 +1,15 @@
 # UEdConverter
 
+---
+1. [Description](#description)
+2. [How to use](#how-to)
+   1. [Cutting piece of map geometry](#cutting-piece-of-map-geometry)
+   2. [Exporting single brush](#exporting-single-brush)
+3. [Texture support](#texture-support) 
+4. [What next?](#what-next)
+---
+
+## Description
 Converts t3d brush files from Unreal Engine 1.5 to obj format and vice-versa. Allows to edit Unreal's brushes in regular 3D editors.
 
 ### What it does:
@@ -62,5 +72,5 @@ pmbLight3or 64x64
 pmbfloor-E 128x128
 ```
 
-### What next?
+## What next?
 In the brush file there is no connection to the texture other than simplified name so the dictionary (texture name to its dimensions) is neccessary. An exctractor for these data is needed but the texture support will stay limited as I don't have capacity to further reverse engineer utx file format.
