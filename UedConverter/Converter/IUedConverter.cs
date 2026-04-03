@@ -1,4 +1,4 @@
-﻿namespace UedConverter.Converter
+namespace UedConverter.Converter
 {
     interface IUedConverter
     {

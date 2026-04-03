@@ -1,4 +1,4 @@
-﻿namespace UedConverter
+namespace UedConverter
 {
     public static class Version
     {

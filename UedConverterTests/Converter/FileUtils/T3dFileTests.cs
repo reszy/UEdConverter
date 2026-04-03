@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using UedConverter.Converter.FileUtils;
 using static UedConverter.Converter.FileUtils.T3dFile;
 using System;
