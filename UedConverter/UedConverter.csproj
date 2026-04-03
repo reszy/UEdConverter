@@ -8,7 +8,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>UedConverter</RootNamespace>
     <AssemblyName>UedConverter</AssemblyName>
-    <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
@@ -60,6 +60,10 @@
     <Compile Include="AboutWindow.xaml.cs">
       <DependentUpon>AboutWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Components\CenterFirstPanel.cs" />
+    <Compile Include="Components\FadingMark.xaml.cs">
+      <DependentUpon>FadingMark.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Converter\ConvertionException.cs" />
     <Compile Include="Converter\FileSyntax.cs" />
     <Compile Include="Converter\FileUtils\ObjFile.cs" />
@@ -67,9 +71,22 @@
     <Compile Include="Converter\IUedConverter.cs" />
     <Compile Include="Converter\O2U_Converter.cs" />
     <Compile Include="Converter\U2O_Converter.cs" />
+    <Compile Include="Converter\V2d.cs" />
     <Compile Include="Converter\V3d.cs" />
     <Compile Include="StringValue.cs" />
+    <Compile Include="UtxFile\CustomTreeElement.cs" />
+    <Compile Include="UtxFile\TextureSizeDictionary.cs" />
+    <Compile Include="UtxFile\UtxReader.cs" />
+    <Compile Include="UtxFile\Structure.cs" />
+    <Compile Include="UtxWindow.xaml.cs">
+      <DependentUpon>UtxWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Version.cs" />
     <Page Include="AboutWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Components\FadingMark.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -85,6 +102,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="UtxWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -115,5 +136,6 @@
   <ItemGroup>
     <Resource Include="UedConverterLogo.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

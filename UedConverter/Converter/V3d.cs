@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -42,6 +42,38 @@ namespace UedConverter.Converter
         public override string ToString()
         {
             return "X=\"" + X + "\", Y=\"" + Y + "\", Z=\"" + Z + '"';
+        }
+
+
+        public static V3d operator +(V3d left, V3d right)
+        {
+            return new V3d(
+                left.X + right.X,
+                left.Y + right.Y,
+                left.Z + right.Z
+                );
+        }
+
+
+        public static V3d operator -(V3d left, V3d right)
+        {
+            return new V3d(
+                left.X - right.X,
+                left.Y - right.Y,
+                left.Z - right.Z
+                );
+        }
+
+
+        public double Dot(V3d v)
+        {
+            return X * v.X + Y * v.Y + Z * v.Z;
+        }
+
+
+        public double Magnitude()
+        {
+            return Math.Sqrt(X * X + Y * Y + Z * Z);
         }
     }
 }
