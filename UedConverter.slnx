@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="UedConverter/UedConverter.csproj" />
+  <Project Path="UedConverterTests/UedConverterTests.csproj" />
+</Solution>

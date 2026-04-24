@@ -308,10 +308,6 @@ namespace UedConverter.UtxFile
             _fs.Seek(_structure.Header.FooterStart, SeekOrigin.Begin);
 
             int counter = 0;
-            int paletteCounter = 0;
-            int groupRef = 0;
-            int imageCounter = 0;
-            var done = false;
             for (int i = 0; i < _structure.Header.FooterCount; i++)
             {
                 counter++;
