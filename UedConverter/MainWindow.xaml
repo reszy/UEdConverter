@@ -44,6 +44,7 @@
         <StackPanel Orientation="Horizontal" Margin="10">
             <Button Content="?" Width="25" Margin="5 0" Click="About_Click"/>
             <Button Content="Open UTX (Experimental)" Margin="5 0" Padding="5 0" Click="OpenUtx_Click"/>
+            <Button Content="UTX Extractor (Experimental)" Margin="5 0" Padding="5 0" Click="Extractor_Click"/>
         </StackPanel>
     </StackPanel>
 </Window>

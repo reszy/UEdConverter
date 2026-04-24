@@ -1,0 +1,29 @@
+﻿<Window x:Class="UedConverter.ExtractorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:UedConverter"
+        xmlns:c="clr-namespace:UedConverter.Components"
+        mc:Ignorable="d"
+        Title="ExtractorWindow" d:Height="450" d:Width="800" MinWidth="600"
+        Background="{DynamicResource Background}" SizeToContent="WidthAndHeight">
+    <StackPanel Orientation="Vertical" Margin="10">
+        <DockPanel LastChildFill="True">
+            <Button Content="File" Width="100" Margin="4" Click="File_Click"/>
+            <TextBlock x:Name="ExtractedFileText" Margin="4" Padding="4" Text="" Style="{DynamicResource TB_Path}" />
+        </DockPanel>
+        <DockPanel LastChildFill="True">
+            <Button Content="Destination" Width="100" Margin="4" Click="Destination_Click"/>
+            <TextBlock x:Name="DestinationText" Margin="4" Padding="4" Text="" Style="{DynamicResource TB_Path}" />
+        </DockPanel>
+        <CheckBox x:Name="ImagesCheckBox" Margin="5" IsEnabled="False">Extract images (Not implemented)</CheckBox>
+        <CheckBox x:Name="AllFilesCheckBox" Margin="5" IsChecked="True">Extract all files from directory</CheckBox>
+
+        <c:CenterFirstPanel>
+            <Button x:Name="ExtractButton" Margin="5" Width="90" Click="Extract_Click">Extract</Button>
+            <TextBlock x:Name="ProgressText"  Margin="5" Foreground="{DynamicResource Text}" />
+            <c:FadingMark x:Name="ExtractorMark" Margin="5" VerticalAlignment="Center"/>
+        </c:CenterFirstPanel>
+    </StackPanel>
+</Window>

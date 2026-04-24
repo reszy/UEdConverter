@@ -219,6 +219,11 @@ namespace UedConverter
             new UtxWindow().ShowDialog();
         }
 
+        private void Extractor_Click(object sender, RoutedEventArgs e)
+        {
+            new ExtractorWindow().ShowDialog();
+        }
+
         private void File_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))

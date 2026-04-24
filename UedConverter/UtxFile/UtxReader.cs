@@ -1,12 +1,7 @@
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Shapes;
 
 namespace UedConverter.UtxFile
 {
@@ -25,22 +20,31 @@ namespace UedConverter.UtxFile
 
         private void Read()
         {
+            _structure.FileName = Path.GetFileNameWithoutExtension(_path);
             using (_fs = new FileStream(_path, FileMode.Open, FileAccess.Read))
             {
                 using (_br = new BinaryReader(_fs))
                 {
                     _structure.Signature = new Signature(_br.ReadBytes(4));
-                    var headerBytes = _br.ReadBytes(4 * 7);
                     _structure.Header = new Header()
                     {
-                        Version = BitConverter.ToInt32(headerBytes, 0),
-                        NamesCount = BitConverter.ToInt32(headerBytes, 2 * 4),
-                        NamesStart = BitConverter.ToInt32(headerBytes, 3 * 4)
+                        Version = _br.ReadInt32(),
+                        UnknowField1 = _br.ReadInt32(),
+                        NamesCount = _br.ReadInt32(),
+                        NamesStart = _br.ReadInt32(),
+                        FooterCount = _br.ReadInt32(),
+                        FooterStart = _br.ReadInt32(),
+                        ClassesCount = _br.ReadInt32(),
+                        ClassesStart = _br.ReadInt32(),
                     };
 
+                    _fs.Seek(_structure.Header.NamesStart, SeekOrigin.Begin);
+
                     ReadNames();
-                    ReadPalettes();
-                    ReadImages();
+                    ReadUsedClasses();
+                    ReadContentsTable();
+
+                    LoadContents();
                 }
             }
         }
@@ -108,36 +112,74 @@ namespace UedConverter.UtxFile
             }
         }
 
+        private void ReadPalette(int? offset = null, string name = null)
+        {
+            if (offset != null) _fs.Seek(offset.Value, SeekOrigin.Begin);
+
+            var type = _fs.ReadByte();
+            var w = _fs.ReadByte();
+            var h = _fs.ReadByte();
+            UColor[] colors = new UColor[w * h];
+            for (int i = 0; i < w * h; i++)
+            {
+                colors[i] = UColor.FromBytes(_br.ReadBytes(4));
+            }
+            _structure.Palettes.Add(new Palette()
+            {
+                Type = (byte)type,
+                W = (byte)w,
+                H = (byte)h,
+                Colors = colors,
+                Name = name
+            });
+        }
+
         private void ReadImages()
         {
             while (true)
             {
                 try
                 {
-                    if(!ReadImage()) break;
-                } catch (Exception e)
+                    if (!ReadImage()) break;
+                }
+                catch (Exception e)
                 {
                     break;
                 }
             }
         }
 
-        private bool ReadImage()
+        private bool ReadImage(int? offset = null, string name = null, string group = null)
         {
-            Image image = new Image();
+            if (offset != null) _fs.Seek(offset.Value, SeekOrigin.Begin);
+            Image image = new Image()
+            {
+                Name = name,
+                Group = group,
+            };
             bool correctImage = false;
             var start = _fs.Position;
-            while (_br.PeekChar() == '\0') _fs.ReadByte();
+
+            //skip if zeroes present
+            var skipped = 0;
+            while (PeekByte() == 0)
+            {
+                _fs.ReadByte();
+                skipped++;
+            }
+            if (skipped > 0) Debug.WriteLine($"Skipped {skipped} zeroes at {_fs.Position - skipped:X}");
+
+            //read image data
             while (true)
             {
-                if (_br.PeekChar() == '\0') _fs.ReadByte();
-                var next = (byte)_br.PeekChar();
-                if(next == 1)
+                if (PeekByte() == 0) _fs.ReadByte();
+                var next = PeekByte();
+                if (next == 1)
                 {
                     var back = _fs.Position;
                     _br.ReadByte();
                     var second = _br.ReadByte();
-                    if(second == 0xa2)
+                    if (second == 0xa2)
                     {
                         _br.ReadBytes(6); break;
                     }
@@ -148,7 +190,7 @@ namespace UedConverter.UtxFile
                 }
                 if (next < _structure.Names.Count)
                 {
-                    if(_structure.Names[next].Value == "Core") return false;
+                    if (_structure.Names[next].Value == "Core") return false;
                     image.AddProperty(ReadProperty());
                 }
                 else
@@ -168,7 +210,7 @@ namespace UedConverter.UtxFile
             var nextMipmapWidth = image.ImageData.Width;
             var nextMipmapHeight = image.ImageData.Height;
             //Mipmaps
-            for(int i =0; i < imageCount - 1; i++)
+            for (int i = 0; i < imageCount - 1; i++)
             {
                 nextMipmapWidth = Math.Max(1, nextMipmapWidth / 2);
                 nextMipmapHeight = Math.Max(1, nextMipmapHeight / 2);
@@ -182,15 +224,15 @@ namespace UedConverter.UtxFile
 
         private UProperty ReadProperty()
         {
-            var nameIndex = _br.ReadByte();
-            var name = _structure.Names[nameIndex].Value;
+            var name = ReadName();
             var type = _br.ReadByte();
             var property = new UProperty() { Name = name, Type = type };
             switch (type)
             {
                 case 34: { property.Value = _br.ReadInt32(); break; }
                 case 162:
-                case 42: { 
+                case 42:
+                    {
                         property.Value = _br.ReadByte();
                         property.Color = UColor.FromBytes(_br.ReadBytes(4));
                         break;
@@ -225,6 +267,118 @@ namespace UedConverter.UtxFile
             image.IsCorrect = image.Width == width && image.Height == height;
             return image;
         }
+
+        private void ReadUsedClasses()
+        {
+            _fs.Seek(_structure.Header.ClassesStart, SeekOrigin.Begin);
+            for (int i = 0; i < _structure.Header.ClassesCount; i++)
+            {
+                _structure.UsedClasses.Add(
+                    new UsedClass()
+                    {
+                        Package = ReadCompactIndexName(),
+                        Type = ReadCompactIndexName(),
+                        id = _br.ReadInt32(),
+                        Name = ReadCompactIndexName()
+                    });
+            }
+        }
+
+        private string ReadName()
+        {
+            var idx = _br.ReadByte();
+            if (idx >= _structure.Names.Count || idx < 0) return $"Index out of bounds({idx}/{_structure.Names.Count})";
+            return _structure.Names[idx].Value;
+        }
+
+        private string ReadCompactIndexName()
+        {
+            var idx = ReadCompactIndex();
+            if (idx >= _structure.Names.Count || idx < 0) return $"Index out of bounds({idx}/{_structure.Names.Count})";
+            return _structure.Names[idx].Value;
+        }
+
+        private int ReadCompactIndex()
+        {
+            return ComplexIndex.Read(_br);
+        }
+
+        private void ReadContentsTable()
+        {
+            _fs.Seek(_structure.Header.FooterStart, SeekOrigin.Begin);
+
+            int counter = 0;
+            int paletteCounter = 0;
+            int groupRef = 0;
+            int imageCounter = 0;
+            var done = false;
+            for (int i = 0; i < _structure.Header.FooterCount; i++)
+            {
+                counter++;
+                var nStart = _fs.Position;
+                var type = ReadCompactIndex();
+                var type2 = ReadCompactIndex();
+                var id = _br.ReadInt32();
+                var name = ReadCompactIndexName();
+                var idk = _br.ReadInt32();
+                var size = ReadCompactIndex();
+                int? offset = null;
+                if (size > 0)
+                {
+                    offset = ReadCompactIndex();
+                }
+                _structure.ContentTable.Add(new ContentDef() { id = type, id2 = type2, Name = name, id3 = id, id4 = idk, Size = size, Offset = offset, RawData = GetRaw(nStart) });
+            }
+        }
+
+        private void LoadContents()
+        {
+            try
+            {
+                var textureId = FindClassId("Texture");
+                var paletteId = FindClassId("Palette");
+                foreach (var entry in _structure.ContentTable)
+                {
+                    var group = FindContentDefName(entry.id3);
+                    if (entry.id == paletteId)
+                    {
+                        ReadPalette(entry.Offset, entry.Name);
+                    }
+                    else if (entry.id == textureId)
+                    {
+                        ReadImage(entry.Offset, entry.Name, group);
+                    }
+                }
+            }
+            catch (NullReferenceException ex)
+            {
+                return;
+            }
+        }
+
+        private int FindClassId(string className)
+        {
+            var result = _structure.UsedClasses.FindIndex(x => x.Package == "Core" && x.Type == "Class" && x.Name == className);
+            return result > 0 ? (result + 1) * -1 : throw new NullReferenceException($"Required class ({className}) cannot be found");
+        }
+
+        private string FindContentDefName(int id)
+        {
+            if (id < 0) return "Error: Cannot evaluate content id below 0";
+            if (id > _structure.ContentTable.Count) return "Error: Cannot evaluate content id above limit";
+            if (id == 0) return null;
+            var result = _structure.ContentTable[id - 1];
+            return result.Name;
+        }
+
+        private byte PeekByte()
+        {
+            _br.ReadByte();
+            _fs.Position -= 1;
+            return _br.ReadByte();
+        }
+
+        private bool EOF() => _fs.Position >= _fs.Length;
 
         public static Structure ReadFile(string path)
         {

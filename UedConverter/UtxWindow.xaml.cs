@@ -1,19 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using UedConverter.UtxFile;
+using static UedConverter.Common;
 
 namespace UedConverter
 {
@@ -26,6 +23,22 @@ namespace UedConverter
                 return new SolidColorBrush(color);
             }
             return Brushes.Transparent;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    public class ColorToHexConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is Color color)
+            {
+                return $"#{color.R:X2}{color.G:X2}{color.B:X2}{color.A:X2}";
+            }
+            return null;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -51,6 +64,8 @@ namespace UedConverter
 
         private UtxFile.Structure openedFile = null;
         private ImageCache _bitmapCache = new ImageCache(15_000_000);
+        private long _fileSize = 0;
+        private long _structureSize = 0;
         private void LoadTreeData()
         {
             openedFile = UtxReader.GetExample();
@@ -63,7 +78,12 @@ namespace UedConverter
                     Multiselect = false
                 };
                 dlg.ShowDialog();
-                if(dlg.FileName != null) openedFile = UtxReader.ReadFile(dlg.FileName);
+                if (dlg.FileName != null)
+                {
+                    openedFile = UtxReader.ReadFile(dlg.FileName);
+                    var info = new FileInfo(dlg.FileName);
+                    _fileSize = info.Length;
+                }
             }
             catch (Exception e)
             {
@@ -72,6 +92,21 @@ namespace UedConverter
             var root = CustomTreeElement.BuildTreeFromFile(openedFile);
             var elements = new List<ICustomTreeElement> { root };
             treeView.ItemsSource = elements;
+            UpdateBottomBar();
+        }
+
+        private void UpdateBottomBar(bool onlyCache = false)
+        {
+            if (!onlyCache) {
+                _structureSize = openedFile?.GetSize() ?? 0;
+            }
+            var cacheSize = _bitmapCache.CurrentSize;
+            long usage = 0;
+            using (var proc = Process.GetCurrentProcess()) {
+                proc.Refresh();
+                usage = proc.PrivateMemorySize64;
+            }
+            BottomText.Text = $"Data: {GetSizeWithUnits(_structureSize)}, File: {GetSizeWithUnits(_fileSize)}, Cache: {GetSizeWithUnits(cacheSize)}, Used: {GetSizeWithUnits(usage)}";
         }
 
         
@@ -99,6 +134,7 @@ namespace UedConverter
                             var i = image.Value;
                             var bitmap = CreateBitmap(i.pixels, i.width, i.height, i.palette);
                             _bitmapCache.Add(path, bitmap);
+                            UpdateBottomBar(true);
                             imageBox.Source = bitmap;
                         }
                     }
@@ -171,7 +207,7 @@ namespace UedConverter
 
     public static partial class Regexes
     {
-        public static Regex IsImageRegex = new Regex(@"^File\.Images\.\[(\d+)\](?:\.MipMaps\.\[(\d+)\])?$", RegexOptions.Compiled);
+        public static Regex IsImageRegex = new Regex(@"^File\.Images\.\[(\d+)\](?:\.MipMaps\.\[(\d+)\])?.*$", RegexOptions.Compiled);
     }
 
     class ImageCache

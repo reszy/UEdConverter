@@ -9,15 +9,16 @@
         Background="{DynamicResource Background}">
     <Window.Resources>
         <local:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
+        <local:ColorToHexConverter x:Key="ColorToHexConverter"/>
     </Window.Resources>
     <Grid ShowGridLines="True">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="400px"/>
+            <ColumnDefinition Width="550px"/>
             <ColumnDefinition Width="512px"/>
         </Grid.ColumnDefinitions>
 
         <Image x:Name="imageBox" Grid.Column="1" Height="512" Width="512"/>
-        <Grid Grid.Column="0" Width="400px">
+        <Grid Grid.Column="0" Width="550px">
             <Grid.RowDefinitions>
                 <RowDefinition/>
                 <RowDefinition Height="150"/>
@@ -27,14 +28,17 @@
                     <HierarchicalDataTemplate ItemsSource="{Binding ChildElements}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock MinWidth="80" Text="{Binding Name}" Padding="5 0" Foreground="{DynamicResource Text}"/>
-                            <Border Width="20" Background="{Binding Color, Converter={StaticResource ColorToBrushConverter}}" />
-                            <Image Stretch="Uniform" Width="Auto" Height="Auto" MaxHeight="20" RenderOptions.BitmapScalingMode="NearestNeighbor" Source="{Binding Palette}" />
+                            <Border Width="20" Background="{Binding Color, Converter={StaticResource ColorToBrushConverter}}" ToolTip="{Binding Color, Converter={StaticResource ColorToHexConverter}}"/>
+                            <Image Stretch="Uniform" Width="Auto" Height="16" MaxHeight="20" RenderOptions.BitmapScalingMode="NearestNeighbor" Source="{Binding Palette}" />
                             <TextBlock Text="{Binding Value}" Padding="5 0" Foreground="{DynamicResource Text}"/>
                         </StackPanel>
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
-            <TextBox x:Name="rawBox" Grid.Row="1" Background="{DynamicResource Background}" Foreground="{DynamicResource Text}" />
+            <DockPanel Grid.Row="1" LastChildFill="True">
+                <TextBlock x:Name="BottomText" DockPanel.Dock="Bottom" Foreground="{DynamicResource Text}"/>
+                <TextBlock x:Name="rawBox" DockPanel.Dock="Top" Background="{DynamicResource Background}" Foreground="{DynamicResource Text}"/>
+            </DockPanel>
         </Grid>
     </Grid>
 </Window>
