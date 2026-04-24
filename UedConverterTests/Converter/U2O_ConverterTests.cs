@@ -1,6 +1,6 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using UedConverter.Converter;
 
-namespace UedConverter.Converter
+namespace UedConverterTests.Converter
 {
     [TestClass()]
     public class U2O_ConverterTests
@@ -108,7 +108,7 @@ namespace UedConverter.Converter
             catch (ConvertionException e)
             {
                 exceptionThrown = true;
-                Assert.IsTrue(e.Message.Contains("Map t3d is not supported"), $"Exception have incorrect message: {e.Message}");
+                Assert.Contains("Map t3d is not supported", e.Message, $"Exception have incorrect message: {e.Message}");
             }
             Assert.IsTrue(exceptionThrown, "Expected exception was not thrown");
         }
