@@ -1,7 +1,6 @@
-namespace UedConverter.Converter
+namespace UedConverter.Converter;
+
+interface IUedConverter
 {
-    interface IUedConverter
-    {
-        string[] Convert(string[] input);
-    }
+    string[] Convert(string[] input);
 }
