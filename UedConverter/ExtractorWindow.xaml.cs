@@ -13,9 +13,9 @@ namespace UedConverter
     /// </summary>
     public partial class ExtractorWindow : Window
     {
-        private string[] fileNames;
-        private string destination;
-        private BackgroundWorker worker = new BackgroundWorker();
+        private string[]? fileNames = null;
+        private string? destination = null;
+        private readonly BackgroundWorker worker = new();
 
         public ExtractorWindow()
         {
@@ -41,13 +41,13 @@ namespace UedConverter
             }
             ValidateExtractinoButton();
         }
+
         private void Destination_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.SaveFileDialog()
             {
                 Filter = "TextureMetadata | *.txt",
                 AddExtension = true,
-                CreatePrompt = true,
                 DefaultExt = "txt",
                 FileName = "texture_dict.txt"
             };
@@ -62,6 +62,7 @@ namespace UedConverter
 
         private void Extract_Click(object sender, RoutedEventArgs e)
         {
+            if (fileNames == null || destination == null) return;
             try
             {
                 var extractor = new UtxExtractor(fileNames, destination, AllFilesCheckBox.IsChecked == true, ImagesCheckBox.IsChecked == true);
@@ -77,7 +78,7 @@ namespace UedConverter
                 {
                     if (s is BackgroundWorker sentWorker)
                     {
-                        ExtractorStatus status = new ExtractorStatus();
+                        ExtractorStatus status = new();
                         do
                         {
                             status = extractor.ExtractPartial();
@@ -94,7 +95,7 @@ namespace UedConverter
             }
         }
 
-        private bool CreateWarning(UtxExtractor.AnalyzeResult analysis)
+        private static bool CreateWarning(UtxExtractor.AnalyzeResult analysis)
         {
             if (analysis.DirCount > 0 || analysis.EstimatedSize > 0)
             {
@@ -115,7 +116,7 @@ namespace UedConverter
                 sb.AppendLine($"Do you want to extract data from those {fileText}?");
                 sb.Append("Metadata file will be created");
                 if (analysis.EstimatedSize > 0) sb.Append($" and multiple image files for estimated size of {GetSizeWithUnits(analysis.EstimatedSize)}");
-                sb.Append(".");
+                sb.Append('.');
                 var result = MessageBox.Show(sb.ToString(), "Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes) return false;
             }
@@ -127,7 +128,7 @@ namespace UedConverter
             ExtractButton.IsEnabled = (fileNames != null && fileNames.Length > 0 && destination != null && !worker.IsBusy);
         }
 
-        private void ExtractorFinished(object sender, RunWorkerCompletedEventArgs e)
+        private void ExtractorFinished(object? sender, RunWorkerCompletedEventArgs e)
         {
             if(e.Error == null)
             {
@@ -136,7 +137,7 @@ namespace UedConverter
             ValidateExtractinoButton();
         }
 
-        private void ExtractorUpdate(object sender, ProgressChangedEventArgs e)
+        private void ExtractorUpdate(object? sender, ProgressChangedEventArgs e)
         {
             if (e.UserState is ExtractorStatus status)
             {

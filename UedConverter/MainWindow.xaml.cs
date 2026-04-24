@@ -38,15 +38,15 @@ namespace UedConverter
             ToT3D,
         }
 
-        private string U2O_File_Path;
-        private string U2O_Destination_Path;
-        private string O2U_File_Path;
-        private string O2U_Destination_Path;
+        private string? U2O_File_Path;
+        private string? U2O_Destination_Path;
+        private string? O2U_File_Path;
+        private string? O2U_Destination_Path;
 
-        private SolidColorBrush HighlightColor = new SolidColorBrush(Color.FromArgb(255, 80, 80, 200));
-        private Brush RegularColor;
+        private readonly SolidColorBrush HighlightColor = new(Color.FromArgb(255, 80, 80, 200));
+        private readonly Brush? RegularColor = null;
 
-        private string OpenDialog(FileType type)
+        private static string OpenDialog(FileType type)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog()
             {
@@ -56,7 +56,7 @@ namespace UedConverter
             return dlg.FileName;
         }
 
-        private string SaveDialog(FileType type)
+        private static string SaveDialog(FileType type)
         {
             var dlg = new Microsoft.Win32.SaveFileDialog()
             {
@@ -66,19 +66,19 @@ namespace UedConverter
             return dlg.FileName;
         }
 
-        private void U2O_File_Click(object sender, RoutedEventArgs e)
+        private void U2O_File_Click(object? sender, RoutedEventArgs e)
         {
             var filename = OpenDialog(FileType.T3D);
             SetSourceFile(filename, ConversionType.ToObj);
         }
 
-        private void U2O_Destination_Click(object sender, RoutedEventArgs e)
+        private void U2O_Destination_Click(object? sender, RoutedEventArgs e)
         {
             var filename = SaveDialog(FileType.OBJ);
             SetDestination(filename, ConversionType.ToObj);
         }
 
-        private void U2O_Convert_Click(object sender, RoutedEventArgs e)
+        private void U2O_Convert_Click(object? sender, RoutedEventArgs e)
         {
             if (String.IsNullOrEmpty(U2O_Destination_Path) || String.IsNullOrEmpty(U2O_File_Path))
             {
@@ -96,7 +96,7 @@ namespace UedConverter
             }
         }
 
-        private void O2U_File_Click(object sender, RoutedEventArgs e)
+        private void O2U_File_Click(object? sender, RoutedEventArgs e)
         {
             var filename = OpenDialog(FileType.OBJ);
             if (!String.IsNullOrEmpty(filename))
@@ -106,15 +106,15 @@ namespace UedConverter
             }
         }
 
-        private void O2U_Destination_Click(object sender, RoutedEventArgs e)
+        private void O2U_Destination_Click(object? sender, RoutedEventArgs e)
         {
             var filename = SaveDialog(FileType.T3D);
             SetDestination(filename, ConversionType.ToT3D);
         }
 
-        private void O2U_Convert_Click(object sender, RoutedEventArgs e)
+        private void O2U_Convert_Click(object? sender, RoutedEventArgs e)
         {
-            if (String.IsNullOrEmpty(O2U_Destination_Path) || String.IsNullOrEmpty(O2U_File_Path))
+            if (string.IsNullOrEmpty(O2U_Destination_Path) || string.IsNullOrEmpty(O2U_File_Path))
             {
                 MessageBox.Show(
                     "Select File and Destination first",
@@ -130,7 +130,7 @@ namespace UedConverter
             }
         }
 
-        private bool ReadConvertSave(string destination, string file, IUedConverter converter)
+        private static bool ReadConvertSave(string destination, string file, IUedConverter converter)
         {
             var success = false;
             try
@@ -165,7 +165,7 @@ namespace UedConverter
             return success;
         }
 
-        private void ShowError(string message)
+        private static void ShowError(string message)
         {
             MessageBox.Show(
                     message,
@@ -177,17 +177,17 @@ namespace UedConverter
 
         private void SetDestination(string destination, ConversionType conversionType)
         {
-            if (!String.IsNullOrEmpty(destination))
+            if (!string.IsNullOrEmpty(destination))
             {
                 if (conversionType == ConversionType.ToObj)
                 {
                     U2O_Destination_Path = destination;
-                    this.U2O_Destination_Textbox.Text = destination;
+                    U2O_Destination_Textbox.Text = destination;
                 }
                 if (conversionType == ConversionType.ToT3D)
                 {
                     O2U_Destination_Path = destination;
-                    this.O2U_Destination_Textbox.Text = destination;
+                    O2U_Destination_Textbox.Text = destination;
                 }
             }
         }
@@ -199,32 +199,32 @@ namespace UedConverter
                 if (conversionType == ConversionType.ToObj)
                 {
                     U2O_File_Path = source;
-                    this.U2O_File_Textbox.Text = source;
+                    U2O_File_Textbox.Text = source;
                 }
                 if (conversionType == ConversionType.ToT3D)
                 {
                     O2U_File_Path = source;
-                    this.O2U_File_Textbox.Text = source;
+                    O2U_File_Textbox.Text = source;
                 }
             }
         }
 
-        private void About_Click(object sender, RoutedEventArgs e)
+        private void About_Click(object? sender, RoutedEventArgs e)
         {
             new AboutWindow().ShowDialog();
         }
 
-        private void OpenUtx_Click(object sender, RoutedEventArgs e)
+        private void OpenUtx_Click(object? sender, RoutedEventArgs e)
         {
             new UtxWindow().ShowDialog();
         }
 
-        private void Extractor_Click(object sender, RoutedEventArgs e)
+        private void Extractor_Click(object? sender, RoutedEventArgs e)
         {
             new ExtractorWindow().ShowDialog();
         }
 
-        private void File_DragEnter(object sender, DragEventArgs e)
+        private void File_DragEnter(object? sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
@@ -247,18 +247,18 @@ namespace UedConverter
                     {
                         ClearHighlight();
                     }
-                } catch(Exception _) {
+                } catch(Exception) {
                     ClearHighlight();
                 }
             }
         }
 
-        private void File_DragLeave(object sender, DragEventArgs e)
+        private void File_DragLeave(object? sender, DragEventArgs e)
         {
             ClearHighlight();
         }
 
-        private void File_Drop(object sender, DragEventArgs e)
+        private void File_Drop(object? sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
@@ -317,7 +317,7 @@ namespace UedConverter
             U2O_Destination_Textbox.Background = RegularColor;
         }
 
-        private FileType? GetFileType(string file)
+        private static FileType? GetFileType(string file)
         {
             if (file == null)  return null;
             if (file.EndsWith("t3d", true, CultureInfo.InvariantCulture))

@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace UedConverter
+﻿namespace UedConverter
 {
     public static class Common
     {
-
         public static string GetSizeWithUnits(double value)
         {
             string unit = "B";
