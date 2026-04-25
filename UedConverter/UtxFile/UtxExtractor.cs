@@ -83,8 +83,8 @@ internal class UtxExtractor
     private void ExtractFile()
     {
         var file = files[extractionCurrentFile];
-        var structure = UtxReader.ReadFile(file.Path);//TODO add skip for images
-        foreach (var image in structure.Images)
+        var result = UtxReader.ReadFile(file.Path);//TODO add skip for images
+        foreach (var image in result.Structure.Images)
         {
             if (!string.IsNullOrEmpty(image.Name))
             {

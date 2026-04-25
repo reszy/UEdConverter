@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -60,54 +62,77 @@ public partial class UtxWindow : Window
     private void LoadTreeData()
     {
         var filename = "";
-        openedFile = UtxReader.GetExample();
-        try
+        openedFile = new Structure("example");
+
+        var dlg = new Microsoft.Win32.OpenFileDialog()
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog()
+            Filter = "UEd Textures | *.utx",
+            Multiselect = false
+        };
+        dlg.ShowDialog();
+        if (dlg.FileName != null)
+        {
+            var result = UtxReader.ReadFile(dlg.FileName);
+            if (result.Exception != null)
             {
-                Filter = "UEd Textures | *.utx",
-                Multiselect = false
-            };
-            dlg.ShowDialog();
-            if (dlg.FileName != null)
-            {
-                openedFile = UtxReader.ReadFile(dlg.FileName);
-                filename = Path.GetFileName(dlg.FileName);
-                var info = new FileInfo(dlg.FileName);
-                _fileSize = info.Length;
+                MessageBox.Show($"Error while reading file: {filename}\n\n{result.Exception.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Stop);
             }
-        }
-        catch (Exception e)
-        {
-            MessageBox.Show($"Error while reading file: {filename}\n\n{e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Stop);
+            openedFile = result.Structure;
+            filename = Path.GetFileName(dlg.FileName);
+            var info = new FileInfo(dlg.FileName);
+            _fileSize = info.Length;
         }
         var root = CustomTreeElement.BuildTreeFromFile(openedFile);
         var elements = new List<ICustomTreeElement> { root };
         treeView.ItemsSource = elements;
+        ExpandFirstItem();
         UpdateBottomBar();
+    }
+
+    private void ExpandFirstItem()
+    {
+        if (treeView.Items.Count == 0) return;
+
+        // Get the first item container (may be generated after layout)
+        var firstItem = treeView.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
+        if (firstItem == null)
+        {
+            // If not generated yet, wait until it is
+            treeView.Dispatcher.BeginInvoke((Action)(() => ExpandFirstItem()), System.Windows.Threading.DispatcherPriority.Background);
+            return;
+        }
+
+        firstItem.IsExpanded = true;
     }
 
     private void UpdateBottomBar(bool onlyCache = false)
     {
-        if (!onlyCache) {
+        if (!onlyCache)
+        {
             _structureSize = openedFile?.GetSize() ?? 0;
         }
         var cacheSize = _bitmapCache.CurrentSize;
         long usage = 0;
-        using (var proc = Process.GetCurrentProcess()) {
+        using (var proc = Process.GetCurrentProcess())
+        {
             proc.Refresh();
             usage = proc.PrivateMemorySize64;
         }
         BottomText.Text = $"Data: {GetSizeWithUnits(_structureSize)}, File: {GetSizeWithUnits(_fileSize)}, Cache: {GetSizeWithUnits(cacheSize)}, Used: {GetSizeWithUnits(usage)}";
     }
 
-    
+
     private void TreeNodeSelected(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (e.NewValue is CustomTreeElement cte)
         {
             string path = GetElementPath(cte);
-            rawBox.Text = path + "\n" + cte.RawData;
+            StringBuilder desc = new();
+            desc.AppendLine(path);
+            if (cte.DebugText != null) desc.AppendLine(cte.DebugText);
+            if (cte.RawData != null) desc.AppendLine(cte.RawData.GetText());
+
+            rawBox.Text = desc.ToString();
             if (IsImage(path))
             {
                 if (_bitmapCache.Contains(path))
@@ -148,12 +173,12 @@ public partial class UtxWindow : Window
             var image = openedFile.Images[imageIndex];
             if (!image.IsCorrect) return null;
 
-            var palette = openedFile.Palettes[image.Palette - 1];
+            var palette = openedFile.GetPalette(image.Palette);
             if (palette.Colors == null) return null;
             if (groups.Count == 3 && int.TryParse(groups[2].Value, out var mipMapIndex))
             {
                 var mipMap = image.MipMaps[mipMapIndex];
-                if(!mipMap.IsCorrect || mipMap.Pixels == null) return null;
+                if (!mipMap.IsCorrect || mipMap.Pixels == null) return null;
                 return (mipMap.Pixels, mipMap.Width, mipMap.Height, palette.Colors);
             }
             else
@@ -170,7 +195,7 @@ public partial class UtxWindow : Window
         var byteDepth = 3;
         var paletteDepth = 4;
         var bytes = new byte[width * height * byteDepth];
-        for(int i = 0; i< pixels.Length; i++)
+        for (int i = 0; i < pixels.Length; i++)
         {
             var color = palette[pixels[i]];
             bytes[i * byteDepth + 0] = color.r;

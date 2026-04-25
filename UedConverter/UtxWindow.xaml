@@ -37,7 +37,7 @@
             </TreeView>
             <DockPanel Grid.Row="1" LastChildFill="True">
                 <TextBlock x:Name="BottomText" DockPanel.Dock="Bottom" Foreground="{DynamicResource Text}"/>
-                <TextBlock x:Name="rawBox" DockPanel.Dock="Top" Background="{DynamicResource Background}" Foreground="{DynamicResource Text}"/>
+                <TextBox x:Name="rawBox" DockPanel.Dock="Top" Background="{DynamicResource Background}" Foreground="{DynamicResource Text}" IsReadOnly="True" VerticalScrollBarVisibility="Auto" FontFamily="Liberation Mono"/>
             </DockPanel>
         </Grid>
     </Grid>

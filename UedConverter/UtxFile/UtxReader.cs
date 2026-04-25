@@ -25,6 +25,22 @@ public sealed class UtxReader : IDisposable
         _fs.Dispose();
     }
 
+    public static ReadResult ReadFile(string path)
+    {
+        using var reader = new UtxReader(path);
+        try
+        {
+            reader.Read();
+        }
+        catch (Exception e)
+        {
+            return new ReadResult(reader._structure, e);
+        }
+        return new ReadResult(reader._structure);
+    }
+
+    public record ReadResult(Structure Structure, Exception? Exception = null);
+
     private void Read()
     {
         _structure.Signature = new Signature(_br.ReadBytes(4));
@@ -34,8 +50,8 @@ public sealed class UtxReader : IDisposable
             UnknowField1 = _br.ReadInt32(),
             NamesCount = _br.ReadInt32(),
             NamesStart = _br.ReadInt32(),
-            FooterCount = _br.ReadInt32(),
-            FooterStart = _br.ReadInt32(),
+            ContentsTableCount = _br.ReadInt32(),
+            ContentsTableStart = _br.ReadInt32(),
             ClassesCount = _br.ReadInt32(),
             ClassesStart = _br.ReadInt32(),
         };
@@ -55,7 +71,7 @@ public sealed class UtxReader : IDisposable
         for (int i = 0; i < _structure.Header.NamesCount; i++)
         {
             var start = _fs.Position;
-            if (_structure.Header.Version > 67)
+            if (_structure.Header.Version > 63)
             {
 
                 var length = _br.ReadByte() - 1;
@@ -112,9 +128,9 @@ public sealed class UtxReader : IDisposable
         }
     }
 
-    private void ReadPalette(int? offset = null, string? name = null)
+    private void ReadPalette(ContentDef? definition = null)
     {
-        if (offset != null) _fs.Seek(offset.Value, SeekOrigin.Begin);
+        if (definition?.Offset != null) _fs.Seek((int)definition.Offset, SeekOrigin.Begin);
 
         var type = _fs.ReadByte();
         var w = _fs.ReadByte();
@@ -124,14 +140,16 @@ public sealed class UtxReader : IDisposable
         {
             colors[i] = UColor.FromBytes(_br.ReadBytes(4));
         }
-        _structure.Palettes.Add(new Palette()
+        var palette = new Palette()
         {
             Type = (byte)type,
             W = (byte)w,
             H = (byte)h,
             Colors = colors,
-            Name = name
-        });
+            Name = definition.Name
+        };
+        _structure.Palettes.Add(palette);
+        definition.Obj = palette;
     }
 
     private void ReadImages()
@@ -171,9 +189,8 @@ public sealed class UtxReader : IDisposable
         //read image data
         while (true)
         {
-            if (PeekByte() == 0) _fs.ReadByte();
             var next = PeekByte();
-            if (next == 1)
+            if (next == 1 || next == 0)
             {
                 var back = _fs.Position;
                 _br.ReadByte();
@@ -223,21 +240,32 @@ public sealed class UtxReader : IDisposable
 
     private UProperty ReadProperty()
     {
+        var start = _fs.Position;
         var name = ReadName();
         var type = _br.ReadByte();
         var property = new UProperty(name) { Type = type };
         switch (type)
         {
-            case 34: { property.Value = _br.ReadInt32(); break; }
-            case 162:
-            case 42:
+            case UPropertyType.Reference:
                 {
-                    property.Value = _br.ReadByte();
+                    property.Value = ReadCompactInt();
+                    break;
+                }
+            case UPropertyType.Int: { property.Value = _br.ReadInt32(); break; }
+            case UPropertyType.IntIndex:
+                {
+                    property.Value = UColor.FromBytes(_br.ReadBytes(5));
+                    break;
+                }
+            case UPropertyType.Color:
+                {
+                    property.Value = ReadCompactIndexName();
                     property.Color = UColor.FromBytes(_br.ReadBytes(4));
                     break;
                 }
             default: { property.Value = _br.ReadByte(); break; }
         }
+        property.RawData = GetRaw(start);
         return property;
     }
 
@@ -245,25 +273,19 @@ public sealed class UtxReader : IDisposable
     {
         var start = _fs.Position;
         var image = new ImageChunk();
-        var size = width * height;
-        _br.ReadBytes(5);
-        if (size > 32)
-        {
-            //extra1
-            _br.ReadByte();
-        }
-        if (size >= 128 * 64)
-        {
-            //extra2
-            _br.ReadByte();
-        }
+        var calculatedSize = width * height;
+        var size = calculatedSize;
+        if (_structure.Header.Version >= 64)
+            _br.ReadInt32();//unknown variable
+        size = ReadCompactInt();
+
         image.RawData = GetRaw(start);
         image.Pixels = _br.ReadBytes(width * height);
         image.Width = _br.ReadInt32();
         image.Height = _br.ReadInt32();
         image.wPower = _br.ReadByte();
         image.hPower = _br.ReadByte();
-        image.IsCorrect = image.Width == width && image.Height == height;
+        image.IsCorrect = calculatedSize == size && image.Width == width && image.Height == height;
         return image;
     }
 
@@ -292,35 +314,35 @@ public sealed class UtxReader : IDisposable
 
     private string ReadCompactIndexName()
     {
-        var idx = ReadCompactIndex();
+        var idx = ReadCompactInt();
         if (idx >= _structure.Names.Count || idx < 0) return $"Index out of bounds({idx}/{_structure.Names.Count})";
         return _structure.Names[idx].Value;
     }
 
-    private int ReadCompactIndex()
+    private int ReadCompactInt()
     {
-        return ComplexIndex.Read(_br);
+        return CompactIndex.Read(_br);
     }
 
     private void ReadContentsTable()
     {
-        _fs.Seek(_structure.Header.FooterStart, SeekOrigin.Begin);
+        _fs.Seek(_structure.Header.ContentsTableStart, SeekOrigin.Begin);
 
         int counter = 0;
-        for (int i = 0; i < _structure.Header.FooterCount; i++)
+        for (int i = 0; i < _structure.Header.ContentsTableCount; i++)
         {
             counter++;
             var nStart = _fs.Position;
-            var type = ReadCompactIndex();
-            var type2 = ReadCompactIndex();
+            var type = ReadCompactInt();
+            var type2 = ReadCompactInt();
             var id = _br.ReadInt32();
             var name = ReadCompactIndexName();
             var idk = _br.ReadInt32();
-            var size = ReadCompactIndex();
+            var size = ReadCompactInt();
             int? offset = null;
             if (size > 0)
             {
-                offset = ReadCompactIndex();
+                offset = ReadCompactInt();
             }
             _structure.ContentTable.Add(new ContentDef() { id = type, id2 = type2, Name = name, id3 = id, id4 = idk, Size = size, Offset = offset, RawData = GetRaw(nStart) });
         }
@@ -328,33 +350,29 @@ public sealed class UtxReader : IDisposable
 
     private void LoadContents()
     {
-        try
+        var textureId = FindClassId("Texture");
+        var paletteId = FindClassId("Palette");
+        if (textureId == null || paletteId == null) return;
+        foreach (var entry in _structure.ContentTable)
         {
-            var textureId = FindClassId("Texture");
-            var paletteId = FindClassId("Palette");
-            foreach (var entry in _structure.ContentTable)
+            var group = FindContentDefName(entry.id3);
+            if (entry.id == paletteId)
             {
-                var group = FindContentDefName(entry.id3);
-                if (entry.id == paletteId)
-                {
-                    ReadPalette(entry.Offset, entry.Name);
-                }
-                else if (entry.id == textureId)
-                {
-                    ReadImage(entry.Offset, entry.Name, group);
-                }
+                ReadPalette(entry);
+                _structure.DebugInfo.PaletteCounter++;
             }
-        }
-        catch (NullReferenceException)
-        {
-            return;
+            else if (entry.id == textureId)
+            {
+                ReadImage(entry.Offset, entry.Name, group);
+                _structure.DebugInfo.TextureCounter++;
+            }
         }
     }
 
-    private int FindClassId(string className)
+    private int? FindClassId(string className)
     {
         var result = _structure.UsedClasses.FindIndex(x => x.Package == "Core" && x.Type == "Class" && x.Name == className);
-        return result > 0 ? (result + 1) * -1 : throw new NullReferenceException($"Required class ({className}) cannot be found");
+        return result > 0 ? (result + 1) * -1 : null;
     }
 
     private string? FindContentDefName(int? id)
@@ -369,64 +387,17 @@ public sealed class UtxReader : IDisposable
 
     private byte PeekByte()
     {
-        _br.ReadByte();
+        var @byte = _br.ReadByte();
         _fs.Position -= 1;
-        return _br.ReadByte();
+        return @byte;
     }
 
-    public static Structure ReadFile(string path)
-    {
-        var reader = new UtxReader(path);
-        reader.Read();
-        return reader._structure;
-    }
-
-    private static string ToRaw(byte[] bytes)
-    {
-        StringBuilder sb = new();
-        byte byteCount = 0;
-        foreach (byte b in bytes)
-        {
-            sb.Append(b.ToString("X").PadLeft(2, '0'));
-            sb.Append(' ');
-            byteCount++;
-            if (byteCount == 8)
-            {
-                sb.Append(' ');
-            }
-            if (byteCount > 15)
-            {
-                byteCount = 0;
-                sb.AppendLine();
-            }
-        }
-        return sb.ToString();
-    }
-
-    private string GetRaw(long start)
+    private RawData GetRaw(long start)
     {
         var end = _fs.Position;
         int length = (int)(end - start);
         _fs.Seek(start, SeekOrigin.Begin);
         var bytes = _br.ReadBytes(length);
-        return ToRaw(bytes);
-    }
-
-    public static Structure GetExample()
-    {
-        var structure = new Structure("")
-        {
-            Signature = new Signature([0xc1, 0x83, 0x2a, 0x9e]),
-            Header = new Header() { Version = 67, NamesCount = 6, NamesStart = 95, RawData = "45 00 00 00 01 00 00 00 1A 00 00 00 40 00 00 00 08 00 00 00 46 C5 01 00 05 00 00 00" },
-        };
-
-        structure.Names.Add(new UString("None") { RawData = "05 4E 6F 6E 65 00 10 04 07 04" });
-        structure.Names.Add(new UString("Palette") { RawData = "08 50 61 6C 65 74 74 65 00 10 00 07 00" });
-        structure.Names.Add(new UString("bAutoVPan") { RawData = "0A 62 41 75 74 6F 56 50 61 6E 00 10 00 07 00" });
-        structure.Names.Add(new UString("Palette1") { RawData = "09 50 61 6C 65 74 74 65 31 00 10 00 07 00" });
-        structure.Names.Add(new UString("Group1") { RawData = "07 48 6D 61 67 65 31 00 10 00 07 00" });
-        structure.Names.Add(new UString("Image1") { RawData = "07 48 6D 61 67 65 31 00 10 00 07 00" });
-
-        return structure;
+        return new RawData(bytes, start);
     }
 }

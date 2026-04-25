@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 
 namespace UedConverter.UtxFile;
 
@@ -6,9 +7,11 @@ public class UString(string value) : ISizeable
 {
     public string Value { get; set; } = value;
     public uint Flags { get; set; }
-    public string? RawData { get; set; }
+    public RawData? RawData { get; set; }
 
     public long GetSize() => Sizeable.GetSize(Value) + sizeof(uint) + Sizeable.GetSize(RawData);
+
+    public override string ToString() => $"UString(\"{Value}\")";
 }
 
 public class UProperty(string name) : ISizeable
@@ -17,14 +20,47 @@ public class UProperty(string name) : ISizeable
     public int Type { get; set; }
     public object? Value { get; set; }
     public UColor? Color { get; set; }
+    public RawData? RawData { get; set; }
 
     public override string ToString()
     {
         return $"UProperty( {Name} T={Type} V={Value} C={Color} )";
     }
 
-    public long GetSize() => sizeof(int) + sizeof(int) + sizeof(int) + (Color?.GetSize() ?? 0);
+    public long GetSize() => sizeof(int) + sizeof(int) + sizeof(int) + Sizeable.GetSize(Color);
+
+    public string GetTypeText() => UPropertyType.GetText(Type);
+    public string GetValueText()
+    {
+        return Type switch
+        {
+            _ => $"{Value}"
+        };
+    }
 }
+
+public static class UPropertyType
+{
+    public const byte Reference = 5;
+    public const byte NameRef = 21;
+    public const byte Color = 42;
+    public const byte IntIndex = 162;
+    public const byte Int = 34;
+
+    public static string GetText(int type)
+    {
+        return type switch
+        {
+            Reference => "Reference",
+            NameRef => "NameRef",
+            Color => "Color",
+            IntIndex => "IntIndex",
+            Int => "Int",
+            _ => $"UnknownType 0x{type:X} ({type})",
+        };
+    }
+}
+
 public class Signature
 {
     private const long PATTERN = 0x9e2a83c1;
@@ -44,31 +80,17 @@ public class Header : ISizeable
     public int UnknowField1 { get; set; }
     public int NamesStart { get; set; }
     public int NamesCount { get; set; }
-    public int FooterCount { get; set; }//grouping and names for images and packages
-    public int FooterStart { get; set; }
+    public int ContentsTableCount { get; set; }//grouping and names for images and packages
+    public int ContentsTableStart { get; set; }
     public int ClassesCount { get; set; }//some classes after images
     public int ClassesStart { get; set; }
 
-    public string? RawData { get; set; }
+    public RawData? RawData { get; set; }
 
     public long GetSize()
     {
         return 8 * sizeof(int) + Sizeable.GetSize(RawData);
     }
-}
-
-public class MipMap
-{
-    public int WidthUp { get; set; }
-    public int HeightUp { get; set; }
-    public int WidthPower { get; set; }
-    public int HeightPower { get; set; }
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public int UClamp { get; set; }
-    public int VClamp { get; set; }
-    public string? HeaderRaw { get; set; }
-    public byte[]? Pixels { get; set; }
 }
 
 public class Image : ISizeable
@@ -79,7 +101,7 @@ public class Image : ISizeable
     public int Width { get; set; }
     public int Height { get; set; }
     public int Size { get => Width * Height; }
-    public string? ImageHeaderRaw { get; set; }
+    public RawData? ImageHeaderRaw { get; set; }
     public ImageChunk? ImageData { get; set; }
     public bool IsCorrect { get; set; } = false;
     public List<UProperty> Properties { get; } = [];
@@ -96,7 +118,7 @@ public class Image : ISizeable
         }
     }
 
-    public long GetSize() => 6 * sizeof(int) + Sizeable.GetSize(ImageHeaderRaw) + (ImageData?.GetSize() ?? 0) + sizeof(bool) + Sizeable.GetSize(Properties) + Sizeable.GetSize(MipMaps);
+    public long GetSize() => 6 * sizeof(int) + Sizeable.GetSize(ImageHeaderRaw) + Sizeable.GetSize(ImageData) + sizeof(bool) + Sizeable.GetSize(Properties) + Sizeable.GetSize(MipMaps);
 }
 
 public class UsedClass : ISizeable
@@ -117,9 +139,9 @@ public class ImageChunk : ISizeable
     public int wPower;
     public int hPower;
     public byte[]? Pixels;
-    public string? RawData;
+    public RawData? RawData;
     public bool IsCorrect;
-    public long GetSize() => 4 * sizeof(int) + (Pixels?.Length ?? 0) * sizeof(byte) + Sizeable.GetSize(RawData) + sizeof(bool);
+    public long GetSize() => 4 * sizeof(int) + Sizeable.GetSize(Pixels) * sizeof(byte) + Sizeable.GetSize(RawData) + sizeof(bool);
 }
 
 public class Palette : ISizeable
@@ -129,7 +151,7 @@ public class Palette : ISizeable
     public byte W { get; set; }
     public byte H { get; set; }
     public UColor[]? Colors { get; set; }
-    public long GetSize() => 3 * sizeof(byte) + (Colors?.Length ?? 0) * sizeof(int) + sizeof(int);
+    public long GetSize() => 3 * sizeof(byte) + Sizeable.GetSize(Colors) * sizeof(int) + sizeof(int);
 }
 
 public struct UColor(byte r, byte g, byte b, byte a = 255) : ISizeable
@@ -139,6 +161,15 @@ public struct UColor(byte r, byte g, byte b, byte a = 255) : ISizeable
     public static UColor FromBytes(byte[] value)
     {
         return new UColor(value[0], value[1], value[2], value[3]);
+    }
+
+    public static UColor FromInt(int value)
+    {
+        var r = (value & 0xFF000000) >> 6;
+        var g = (value & 0x00FF0000) >> 4;
+        var b = (value & 0x0000FF00) >> 2;
+        var a = value & 0x000000FF;
+        return new UColor((byte)r, (byte)g, (byte)b, (byte)a);
     }
 
     public readonly long GetSize() => 4 * sizeof(byte);
@@ -156,9 +187,11 @@ public class ContentDef : ISizeable
     public string? Name;
     public int? id3;
     public int? id4;
-    public string? RawData;
+    public RawData? RawData;
     public int? Size;
     public int? Offset;
+
+    public object? Obj;
     public long GetSize() => 6 * sizeof(int) + Sizeable.GetSize(RawData);
     public override string ToString() => $"{Name} {id} {id2} {id3} {id4} Size:{Size} Offset:{Offset}";
 }
@@ -170,8 +203,11 @@ public interface ISizeable
 
 public static class Sizeable
 {
+    public static long GetSize(ISizeable? v) => v?.GetSize() ?? 0;
     public static long GetSize(string? str) => (str != null) ? (sizeof(char) * str.Length) : 0;
-    public static long GetSize<T>(List<T> lst) where T : ISizeable => (lst != null) ? lst.Sum(x => x.GetSize()) : 0;
+    public static long GetSize<T>(List<T>? lst) where T : ISizeable => (lst != null) ? lst.Sum(x => x.GetSize()) : 0;
+    public static long GetSize<T>(T[]? lst) where T : ISizeable => (lst != null) ? lst.Sum(x => x.GetSize()) : 0;
+    public static long GetSize(byte[]? lst) => (lst != null) ? (lst.Length * sizeof(byte)) : 0;
 }
 
 public class Structure(string filename) : ISizeable
@@ -184,16 +220,34 @@ public class Structure(string filename) : ISizeable
     public List<Image> Images { get; } = [];
     public List<UsedClass> UsedClasses { get; } = [];
     public List<ContentDef> ContentTable { get; } = [];
+    public DebugInfo DebugInfo { get; } = new();
 
-    public void AddName(string value, uint flags, string rawData)
+    public void AddName(string value, uint flags, RawData rawData)
     {
         Names.Add(new UString(value) { Flags = flags, RawData = rawData });
+    }
+
+    public Palette? GetPalette(int index)
+    {
+        var idx = index - 1;
+        if (idx >= 0)
+        {
+            if (idx < ContentTable.Count && ContentTable[idx].Obj is Palette palette)
+            {
+                return palette;
+            }
+            else if (idx < Palettes.Count)
+            {
+                return Palettes[index - 1];
+            }
+        }
+        return null;
     }
 
     public long GetSize()
     {
         return Sizeable.GetSize(FileName)
-            + (Header?.GetSize() ?? 0)
+            + Sizeable.GetSize(Header)
             + Sizeable.GetSize(Names)
             + Sizeable.GetSize(Palettes)
             + Sizeable.GetSize(Images)
@@ -202,8 +256,13 @@ public class Structure(string filename) : ISizeable
     }
 }
 
+public class DebugInfo
+{
+    public int TextureCounter = 0;
+    public int PaletteCounter = 0;
+}
 
-class ComplexIndex
+class CompactIndex
 {
     // https://en.wikipedia.org/wiki/Variable-length_quantity (Wiki shows wrong order of bit with sign) -> https://web.archive.org/web/20100820185656/http://unreal.epicgames.com/Packages.htm
     private const int firstOctetValueMask = 0b0011_1111;
@@ -240,4 +299,83 @@ class ComplexIndex
     }
     private static bool HasNext(byte b) => (b & nextValueMask) != 0;
     private static bool Has(byte b, byte c) => (b & c) != 0;
+
+    public static int ParseString(string str)//used in immediate window to easily convert numbers
+    {
+        List<byte> bytes = [];
+        byte? upper = null;
+        for (int i = 0; i < str.Length; i++)
+        {
+            byte c = (byte)char.ToUpper(str[i]);
+            byte? v = null;
+            if (c >= 'A' && c <= 'Z')
+            {
+                v = (byte)(c - ((byte)'A') + 10);
+            }
+            else if (c >= '0' && c <= '9')
+            {
+                v = (byte)(c - ((byte)'0'));
+            }
+            if (v != null)
+            {
+                if (upper == null)
+                {
+                    upper = v;
+                }
+                else
+                {
+                    bytes.Add((byte)((upper << 4) | v));
+                    upper = null;
+                }
+            }
+        }
+        using var ms = new MemoryStream([.. bytes]);
+        using var br = new BinaryReader(ms);
+        return Read(br);
+    }
+}
+
+public class RawData(byte[] data, long location) : ISizeable
+{
+    public readonly byte[] Data = data;
+    public readonly long Location = location;
+
+    public override string ToString() => $"RawData at 0x{Location:X} , len({Data.Length})";
+
+    public long GetSize() => Data.Length + sizeof(long);
+
+    public string GetText()
+    {
+        StringBuilder sb = new();
+        int startAt = (int)(Location % 16);
+        if (startAt != 0)
+        {
+            WriteAddress(sb, Location - startAt);
+            for (int i = 0; i < startAt; i++)
+            {
+                sb.Append(" __");
+                if (i == 7) sb.Append(' ');
+            }
+        }
+        for (int i = 0; i < Data.Length; i++)
+        {
+            var lineLocation = (startAt + i) % 16;
+            if (lineLocation == 0)
+            {
+                WriteAddress(sb, Location + i);
+            }
+            sb.Append(' ');
+            sb.Append(Data[i].ToString("X2"));
+            if (lineLocation == 7) sb.Append(' ');
+            else if (lineLocation == 15) sb.AppendLine();
+        }
+        return sb.ToString();
+    }
+
+    private static void WriteAddress(StringBuilder sb, long address)
+    {
+        sb.Append("0x");
+        sb.Append(address.ToString("X8"));
+        sb.Append(": ");
+    }
 }
