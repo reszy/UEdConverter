@@ -5,24 +5,15 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UedConverter"
         mc:Ignorable="d"
-        Title="UtxWindow" MinWidth="840" MinHeight="512" MaxHeight="640"  SizeToContent="WidthAndHeight"
+        Title="UtxWindow" MinWidth="840" MinHeight="512" SizeToContent="Width"
         Background="{DynamicResource Background}">
     <Window.Resources>
         <local:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
         <local:ColorToHexConverter x:Key="ColorToHexConverter"/>
     </Window.Resources>
-    <Grid ShowGridLines="True">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="550px"/>
-            <ColumnDefinition Width="512px"/>
-        </Grid.ColumnDefinitions>
-
+    <Grid ShowGridLines="True" ColumnDefinitions="550px, 512px">
         <Image x:Name="imageBox" Grid.Column="1" Height="512" Width="512"/>
-        <Grid Grid.Column="0" Width="550px">
-            <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition Height="150"/>
-            </Grid.RowDefinitions>
+        <Grid Grid.Column="0" Width="550px" RowDefinitions="*, 150">
             <TreeView x:Name="treeView" Grid.Row="0" SelectedItemChanged="TreeNodeSelected" Background="{DynamicResource Background}" Foreground="{DynamicResource Text}">
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate ItemsSource="{Binding ChildElements}">

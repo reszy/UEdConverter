@@ -14,9 +14,10 @@ internal class UtxExtractor
 {
     private readonly string[] path;
     private readonly string destination;
-    private readonly List<UtxFilePath> files;
     private readonly bool all;
     private readonly bool saveImages;
+    private readonly List<UtxFilePath> files = [];
+    private readonly List<string> problematicFiles = [];
 
     private int extractionCurrentFile;
     private bool started = false;
@@ -25,7 +26,6 @@ internal class UtxExtractor
 
     public UtxExtractor(string[] path, string destination, bool all, bool saveImages)
     {
-        files = [];
         this.path = path;
         this.destination = destination;
         this.all = all;
@@ -34,11 +34,11 @@ internal class UtxExtractor
     }
 
     private readonly record struct UtxFilePath(string Path, long Size);
-    public readonly record struct AnalyzeResult(int DirCount, int FileCount, int EstimatedSize, List<string> Directories);
+    public readonly record struct AnalyzeResult(int DirCount, int FileCount, long EstimatedSize, List<string> Directories);
 
     internal AnalyzeResult Analyze()
     {
-        int estimatedSize = 0;
+        long estimatedSize = 0;
         List<string> directories = [];
         if (all)
         {
@@ -48,6 +48,18 @@ internal class UtxExtractor
                 var info = new DirectoryInfo(directory);
                 files.AddRange(info.EnumerateFiles("*.utx").Select(f => new UtxFilePath(f.FullName, f.Length)));
             }
+        }
+        else
+        {
+            foreach (var filePath in path)
+            {
+                var info = new FileInfo(filePath);
+                files.AddRange(new UtxFilePath(info.FullName, info.Length));
+            }
+        }
+        if (saveImages)
+        {
+            estimatedSize = files.Sum(f => f.Size);
         }
         return new AnalyzeResult(directories.Count, files.Count, estimatedSize, directories);
     }
@@ -64,13 +76,13 @@ internal class UtxExtractor
                 {
                     writer.WriteLine($"{entry.Key} {entry.Value.X}x{entry.Value.Y}");
                 }
+                done = true;
             }
             else
             {
                 ExtractFile();
             }
             extractionCurrentFile++;
-            Thread.Sleep(800);
         }
         else
         {
@@ -84,11 +96,15 @@ internal class UtxExtractor
     {
         var file = files[extractionCurrentFile];
         var result = UtxReader.ReadFile(file.Path);//TODO add skip for images
+        if (result.Problems.Count > 0 || result.Exception != null) problematicFiles.Add(result.Structure.FileName);
         foreach (var image in result.Structure.Images)
         {
-            if (!string.IsNullOrEmpty(image.Name))
+            if (!string.IsNullOrEmpty(image.Name) && image.IsCorrect)
             {
-                textureDictionary.Add(image.Name, new V2d(image.Height, image.Width));
+                if (textureDictionary.ContainsKey(image.Name))
+                    textureDictionary.Add($"{result.Structure.FileName}.{image.Name}", new V2d(image.Height, image.Width));
+                else
+                    textureDictionary.Add(image.Name, new V2d(image.Height, image.Width));
             }
         }
     }

@@ -14,6 +14,8 @@
 
         <SolidColorBrush x:Key="Focus" Color="#FF4878F8"/>
 
+        <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#FF54667E"/>
+
         <Style TargetType="CheckBox">
             <Setter Property="SnapsToDevicePixels" Value="true"/>
             <Setter Property="OverridesDefaultStyle" Value="true"/>

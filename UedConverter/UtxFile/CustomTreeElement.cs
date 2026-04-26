@@ -9,10 +9,10 @@ public interface ICustomTreeElement
     string Name { get; set; }
     string? Value { get; set; }
     RawData? RawData { get; set; }
+    public string? DebugText { get; set; }
     ICustomTreeElement? Parent { get; set; }
     List<ICustomTreeElement> ChildElements { get; }
     void SpreadParent();
-    bool? IsExpanded { get; set; }
 }
 
 public class CustomTreeElement : ICustomTreeElement
@@ -25,7 +25,6 @@ public class CustomTreeElement : ICustomTreeElement
     public BitmapSource? Palette { get; set; }
     public ICustomTreeElement? Parent { get; set; }
     public List<ICustomTreeElement> ChildElements { get; } = [];
-    public bool? IsExpanded { get; set; }
 
     public CustomTreeElement With(Action<CustomTreeElement> action)
     {

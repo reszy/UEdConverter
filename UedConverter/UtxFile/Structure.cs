@@ -39,6 +39,30 @@ public class UProperty(string name) : ISizeable
     }
 }
 
+public class ObjectReference(int value)
+{
+    public int Value { get; } = value;
+
+    public string? ReferenceText { get; set; } = null;
+
+    public override string ToString() => $"{Value} -> {ReferenceText}";
+
+    public void ResolveReference(Structure structure)
+    {
+        if (Value == 0) ReferenceText = "null";
+        if (Value < 0)
+        {
+            var classDef = structure.UsedClasses[Value * -1 - 1];
+            ReferenceText = $"{classDef.Type} {classDef.Package}.{classDef.Name}";
+        }
+        if (Value > 0)
+        {
+            var contentDef = structure.ContentTable[Value - 1];
+            ReferenceText = $"{contentDef.Name}";
+        }
+    }
+};
+
 public static class UPropertyType
 {
     public const byte Reference = 5;
@@ -93,10 +117,10 @@ public class Header : ISizeable
     }
 }
 
-public class Image : ISizeable
+public class Image(string? name = null, string? group = null) : ISizeable
 {
-    public string? Name { get; set; }
-    public string? Group { get; set; }
+    public string? Name { get; set; } = name;
+    public string? Group { get; set; } = group;
     public int Palette { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -114,7 +138,13 @@ public class Image : ISizeable
         {
             case "USize": Width = Convert.ToInt32(property.Value); break;
             case "VSize": Height = Convert.ToInt32(property.Value); break;
-            case "Palette": Palette = Convert.ToInt32(property.Value); break;
+            case "Palette": {
+                    if (property.Value is ObjectReference objRef)
+                        Palette = objRef.Value;
+                    else
+                        Palette = Convert.ToInt32(property.Value);
+                    break;
+                }
         }
     }
 
@@ -264,7 +294,7 @@ public class DebugInfo
 
 class CompactIndex
 {
-    // https://en.wikipedia.org/wiki/Variable-length_quantity (Wiki shows wrong order of bit with sign) -> https://web.archive.org/web/20100820185656/http://unreal.epicgames.com/Packages.htm
+    // https://en.wikipedia.org/wiki/Variable-length_quantity -> https://web.archive.org/web/20100820185656/http://unreal.epicgames.com/Packages.htm
     private const int firstOctetValueMask = 0b0011_1111;
     private const int nextValueMask = 0b1000_0000;
     private const int valueMask = 0b0111_1111;

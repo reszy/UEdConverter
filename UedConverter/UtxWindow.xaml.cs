@@ -56,14 +56,11 @@ public partial class UtxWindow : Window
     }
 
     private readonly ImageCache _bitmapCache = new(15_000_000);
-    private Structure? openedFile = null;
+    private Structure? _openedFile = null;
     private long _fileSize = 0;
     private long _structureSize = 0;
     private void LoadTreeData()
     {
-        var filename = "";
-        openedFile = new Structure("example");
-
         var dlg = new Microsoft.Win32.OpenFileDialog()
         {
             Filter = "UEd Textures | *.utx",
@@ -75,41 +72,38 @@ public partial class UtxWindow : Window
             var result = UtxReader.ReadFile(dlg.FileName);
             if (result.Exception != null)
             {
-                MessageBox.Show($"Error while reading file: {filename}\n\n{result.Exception.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Stop);
+                MessageBox.Show($"Error while reading file: {dlg.FileName}\n\n{result.Exception.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Stop);
             }
-            openedFile = result.Structure;
-            filename = Path.GetFileName(dlg.FileName);
+            _openedFile = result.Structure;
             var info = new FileInfo(dlg.FileName);
             _fileSize = info.Length;
+            var root = CustomTreeElement.BuildTreeFromFile(_openedFile);
+            root.DebugText = string.Join('\n', result.Problems);
+            var elements = new List<ICustomTreeElement> { root };
+            treeView.ItemsSource = elements;
+            ExpandFirstItem();
         }
-        var root = CustomTreeElement.BuildTreeFromFile(openedFile);
-        var elements = new List<ICustomTreeElement> { root };
-        treeView.ItemsSource = elements;
-        ExpandFirstItem();
         UpdateBottomBar();
     }
 
     private void ExpandFirstItem()
     {
         if (treeView.Items.Count == 0) return;
-
-        // Get the first item container (may be generated after layout)
-        var firstItem = treeView.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
-        if (firstItem == null)
+        if (treeView.ItemContainerGenerator.ContainerFromIndex(0) is not TreeViewItem firstItem)
         {
-            // If not generated yet, wait until it is
-            treeView.Dispatcher.BeginInvoke((Action)(() => ExpandFirstItem()), System.Windows.Threading.DispatcherPriority.Background);
+            treeView.Dispatcher.BeginInvoke(() => ExpandFirstItem(), System.Windows.Threading.DispatcherPriority.Background);
             return;
         }
 
         firstItem.IsExpanded = true;
+        firstItem.IsSelected = true;
     }
 
     private void UpdateBottomBar(bool onlyCache = false)
     {
         if (!onlyCache)
         {
-            _structureSize = openedFile?.GetSize() ?? 0;
+            _structureSize = _openedFile?.GetSize() ?? 0;
         }
         var cacheSize = _bitmapCache.CurrentSize;
         long usage = 0;
@@ -166,15 +160,15 @@ public partial class UtxWindow : Window
     }
     private (byte[] pixels, int width, int height, UColor[] palette)? GetImage(string path)
     {
-        if (openedFile == null) return null;
+        if (_openedFile == null) return null;
         var groups = Regexes.IsImageRegex.Match(path).Groups;
         if (groups.Count >= 2 && int.TryParse(groups[1].Value, out var imageIndex))
         {
-            var image = openedFile.Images[imageIndex];
+            var image = _openedFile.Images[imageIndex];
             if (!image.IsCorrect) return null;
 
-            var palette = openedFile.GetPalette(image.Palette);
-            if (palette.Colors == null) return null;
+            var palette = _openedFile.GetPalette(image.Palette);
+            if (palette?.Colors == null) return null;
             if (groups.Count == 3 && int.TryParse(groups[2].Value, out var mipMapIndex))
             {
                 var mipMap = image.MipMaps[mipMapIndex];
@@ -193,7 +187,7 @@ public partial class UtxWindow : Window
     private static BitmapSource CreateBitmap(byte[] pixels, int width, int height, UColor[] palette)
     {
         var byteDepth = 3;
-        var paletteDepth = 4;
+        var paletteDepth = 4;//might be useful if different palette is ever found
         var bytes = new byte[width * height * byteDepth];
         for (int i = 0; i < pixels.Length; i++)
         {

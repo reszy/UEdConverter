@@ -145,5 +145,10 @@ namespace UedConverter
                 if (status.Current >= status.Total) ExtractorMark.Show(TimeSpan.FromSeconds(2));
             }
         }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            worker.Dispose();
+        }
     }
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -10,6 +9,7 @@ public sealed class UtxReader : IDisposable
     private readonly Structure _structure;
     private readonly FileStream _fs;
     private readonly BinaryReader _br;
+    private readonly List<string> _problems = [];
 
     private UtxReader(string path)
     {
@@ -34,12 +34,12 @@ public sealed class UtxReader : IDisposable
         }
         catch (Exception e)
         {
-            return new ReadResult(reader._structure, e);
+            return new ReadResult(reader._structure, reader._problems, e);
         }
-        return new ReadResult(reader._structure);
+        return new ReadResult(reader._structure, reader._problems);
     }
 
-    public record ReadResult(Structure Structure, Exception? Exception = null);
+    public record ReadResult(Structure Structure, List<string> Problems, Exception? Exception = null);
 
     private void Read()
     {
@@ -73,19 +73,19 @@ public sealed class UtxReader : IDisposable
             var start = _fs.Position;
             if (_structure.Header.Version > 63)
             {
-
+                //Read string with set length
                 var length = _br.ReadByte() - 1;
                 if (length > 0)
                 {
                     var value = _br.ReadBytes(length);
                     _br.ReadByte();//terminator
                     var flags = _br.ReadUInt32();
-
                     _structure.AddName(Encoding.UTF8.GetString(value, 0, length), flags, GetRaw(start));
                 }
             }
             else
             {
+                //Read string character by character
                 var sb = new StringBuilder();
                 char c;
                 do
@@ -97,34 +97,6 @@ public sealed class UtxReader : IDisposable
                 var flags = _br.ReadUInt32();
                 if (sb.Length > 0) _structure.AddName(sb.ToString().TrimEnd('\0'), flags, GetRaw(start));
             }
-
-        }
-    }
-
-    private void ReadPalettes()
-    {
-        while (true)
-        {
-            var type = _fs.ReadByte();
-            var w = _fs.ReadByte();
-            var h = _fs.ReadByte();
-            if (type != 0 || w != 64 || h != 4)
-            {
-                _fs.Seek(-3, SeekOrigin.Current);
-                return;
-            }
-            UColor[] colors = new UColor[w * h];
-            for (int i = 0; i < w * h; i++)
-            {
-                colors[i] = UColor.FromBytes(_br.ReadBytes(4));
-            }
-            _structure.Palettes.Add(new Palette()
-            {
-                Type = (byte)type,
-                W = (byte)w,
-                H = (byte)h,
-                Colors = colors,
-            });
         }
     }
 
@@ -146,81 +118,32 @@ public sealed class UtxReader : IDisposable
             W = (byte)w,
             H = (byte)h,
             Colors = colors,
-            Name = definition.Name
+            Name = definition?.Name
         };
         _structure.Palettes.Add(palette);
-        definition.Obj = palette;
+        definition?.Obj = palette;
     }
 
-    private void ReadImages()
+    private bool ReadImage(ContentDef definition, string? group)
     {
-        while (true)
-        {
-            try
-            {
-                if (!ReadImage()) break;
-            }
-            catch (Exception)
-            {
-                break;
-            }
-        }
-    }
-
-    private bool ReadImage(int? offset = null, string? name = null, string? group = null)
-    {
-        if (offset != null) _fs.Seek(offset.Value, SeekOrigin.Begin);
-        Image image = new()
-        {
-            Name = name,
-            Group = group,
-        };
+        if(definition.Offset == null) return false;
+        _fs.Seek((int)definition.Offset, SeekOrigin.Begin);
+        Image image = new(definition.Name, group);
         var start = _fs.Position;
-
-        //skip if zeroes present
-        var skipped = 0;
-        while (PeekByte() == 0)
-        {
-            _fs.ReadByte();
-            skipped++;
-        }
-        if (skipped > 0) Debug.WriteLine($"Skipped {skipped} zeroes at {_fs.Position - skipped:X}");
 
         //read image data
         while (true)
         {
-            var next = PeekByte();
-            if (next == 1 || next == 0)
-            {
-                var back = _fs.Position;
-                _br.ReadByte();
-                var second = _br.ReadByte();
-                if (second == 0xa2)
-                {
-                    _br.ReadBytes(6); break;
-                }
-                else
-                {
-                    _fs.Position = back;
-                }
-            }
-            if (next < _structure.Names.Count)
-            {
-                if (_structure.Names[next].Value == "Core") return false;
-                image.AddProperty(ReadProperty());
-            }
-            else
-            {
-                break;
-            }
+            var property = ReadProperty();
+            if (property == null) break;
+            image.AddProperty(property);
         }
         var imageCount = _br.ReadByte();
-        var size = image.Size;
         image.ImageHeaderRaw = GetRaw(start);
-        if (size > 512 * 512 || imageCount < 1) return false;
+        if (image.Size > 1024 * 1024 || imageCount < 1) return false;
+
         image.ImageData = ReadImageChunk(image.Width, image.Height);
         _structure.Images.Add(image);
-        if (image.Palette < 1 || image.Palette > _structure.Palettes.Count) return false;
         image.IsCorrect = image.ImageData.IsCorrect;
 
         var nextMipmapWidth = image.ImageData.Width;
@@ -238,23 +161,32 @@ public sealed class UtxReader : IDisposable
         return true;
     }
 
-    private UProperty ReadProperty()
+    private UProperty? ReadProperty()
     {
         var start = _fs.Position;
         var name = ReadName();
-        var type = _br.ReadByte();
-        var property = new UProperty(name) { Type = type };
-        switch (type)
+        var property = new UProperty(name);
+        if (name == "None") return null;
+
+        property.Type = _br.ReadByte();
+        switch (property.Type)
         {
             case UPropertyType.Reference:
+            case UPropertyType.NameRef:
                 {
-                    property.Value = ReadCompactInt();
+                    var objRef = new ObjectReference(ReadCompactInt());
+                    property.Value = objRef;
+                    objRef.ResolveReference(_structure);
                     break;
                 }
-            case UPropertyType.Int: { property.Value = _br.ReadInt32(); break; }
+            case UPropertyType.Int:
+                {
+                    property.Value = _br.ReadInt32();
+                    break;
+                }
             case UPropertyType.IntIndex:
                 {
-                    property.Value = UColor.FromBytes(_br.ReadBytes(5));
+                    property.Value = _br.ReadBytes(5);
                     break;
                 }
             case UPropertyType.Color:
@@ -263,7 +195,11 @@ public sealed class UtxReader : IDisposable
                     property.Color = UColor.FromBytes(_br.ReadBytes(4));
                     break;
                 }
-            default: { property.Value = _br.ReadByte(); break; }
+            default:
+                {
+                    property.Value = _br.ReadByte();
+                    break;
+                }
         }
         property.RawData = GetRaw(start);
         return property;
@@ -363,7 +299,10 @@ public sealed class UtxReader : IDisposable
             }
             else if (entry.id == textureId)
             {
-                ReadImage(entry.Offset, entry.Name, group);
+                if(!ReadImage(entry, group))
+                {
+                    _problems.Add($"could not load texture {entry.Name} at 0x{entry.Offset:X}");
+                }
                 _structure.DebugInfo.TextureCounter++;
             }
         }
@@ -378,18 +317,14 @@ public sealed class UtxReader : IDisposable
     private string? FindContentDefName(int? id)
     {
         if (id == null) return null;
-        if (id < 0) return "Error: Cannot evaluate content id below 0";
-        if (id > _structure.ContentTable.Count) return "Error: Cannot evaluate content id above limit";
+        if (id < 0 || id > _structure.ContentTable.Count)
+        {
+            _problems.Add($"Cannot find ContentDefinition name with id {id}");
+            return "Error: Cannot evaluate content id is out of bounds";
+        }
         if (id == 0) return null;
         var result = _structure.ContentTable[(int)id - 1];
         return result.Name;
-    }
-
-    private byte PeekByte()
-    {
-        var @byte = _br.ReadByte();
-        _fs.Position -= 1;
-        return @byte;
     }
 
     private RawData GetRaw(long start)
