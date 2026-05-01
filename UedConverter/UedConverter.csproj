@@ -15,4 +15,8 @@
     <Resource Include="UedConverterLogo.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Image\" />
+  </ItemGroup>
+
 </Project>

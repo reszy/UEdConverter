@@ -18,9 +18,20 @@
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate ItemsSource="{Binding ChildElements}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock MinWidth="80" Text="{Binding Name}" Padding="5 0" Foreground="{DynamicResource Text}"/>
-                            <Border Width="20" Background="{Binding Color, Converter={StaticResource ColorToBrushConverter}}" ToolTip="{Binding Color, Converter={StaticResource ColorToHexConverter}}"/>
-                            <Image Stretch="Uniform" Width="Auto" Height="16" MaxHeight="20" RenderOptions.BitmapScalingMode="NearestNeighbor" Source="{Binding Palette}" />
+                            <TextBlock MinWidth="110" Text="{Binding Name}" Padding="5 0" Foreground="{DynamicResource Text}"/>
+                            <Image Stretch="Uniform" Width="Auto" Height="16" MaxHeight="20" RenderOptions.BitmapScalingMode="NearestNeighbor" Source="{Binding InlineImage}" />
+                            <Border Width="10" Height="10" Background="{Binding Color, Converter={StaticResource ColorToBrushConverter}}" ToolTip="{Binding Color, Converter={StaticResource ColorToHexConverter}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Color}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
                             <TextBlock Text="{Binding Value}" Padding="5 0" Foreground="{DynamicResource Text}"/>
                         </StackPanel>
                     </HierarchicalDataTemplate>

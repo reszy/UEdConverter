@@ -1,37 +1,20 @@
+using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace UedConverter.UtxFile;
 
-public interface ICustomTreeElement
+public class CustomTreeElement
 {
-    Color? Color { get; set; }
-    string Name { get; set; }
-    string? Value { get; set; }
-    RawData? RawData { get; set; }
-    public string? DebugText { get; set; }
-    ICustomTreeElement? Parent { get; set; }
-    List<ICustomTreeElement> ChildElements { get; }
-    void SpreadParent();
-}
-
-public class CustomTreeElement : ICustomTreeElement
-{
-    public Color? Color { get; set; }
     public string Name { get; set; }
+    public Color? Color { get; set; }
+    public BitmapSource? InlineImage { get; set; }
     public string? Value { get; set; }
+    public int? ArrayIndex { get; set; }
     public RawData? RawData { get; set; }
     public string? DebugText { get; set; }
-    public BitmapSource? Palette { get; set; }
-    public ICustomTreeElement? Parent { get; set; }
-    public List<ICustomTreeElement> ChildElements { get; } = [];
-
-    public CustomTreeElement With(Action<CustomTreeElement> action)
-    {
-        action.Invoke(this);
-        return this;
-    }
-
+    public CustomTreeElement? Parent { get; set; }
+    public List<CustomTreeElement> ChildElements { get; } = [];
 
     public CustomTreeElement(string name, string? value)
     {
@@ -44,6 +27,18 @@ public class CustomTreeElement : ICustomTreeElement
         Value = value;
         ChildElements.AddRange(childElements);
     }
+    private CustomTreeElement(string name, string? value, List<CustomTreeElement> childElements)
+    {
+        Name = name;
+        Value = value;
+        ChildElements = childElements;
+    }
+
+    public CustomTreeElement With(Action<CustomTreeElement> action)
+    {
+        action.Invoke(this);
+        return this;
+    }
 
     public void SpreadParent()
     {
@@ -54,26 +49,27 @@ public class CustomTreeElement : ICustomTreeElement
         }
     }
 
-    public static ICustomTreeElement BuildTreeFromFile(Structure file)
+    public static CustomTreeElement BuildTreeFromFile(Structure file)
     {
-        var root = new CustomTreeElement("File", file.FileName, [
+        var root = new CustomTreeElement("File", file.FileName,
             ToCTE(file.Header),
-            CTEArray("Names", [.. file.Names.Select((x, i) => ToCTE(i, x))]),
-            CTEArray("Palettes", [.. file.Palettes.Select((x, i) => ToCTE(i, x))]),
-            CTEArray("Images", [..file.Images.Select((x, i) => ToCTE(i, x, file.FileName))]),
-            CTEArray("Classes", [..file.UsedClasses.Select((x, i) => ToCTE(i, x))]),
-            CTEArray("ContentTable", [..file.ContentTable.Select((x, i) => ToCTE(i, x))]).With(cte => cte.DebugText = $"Found:\nTextures:{file.DebugInfo.TextureCounter}\nPalettes:{file.DebugInfo.PaletteCounter}")
-        ]);
+            CTEArray("Names", file.Names, (x, i) => ToCTE(i, x)),
+            CTEArray("Palettes", file.Palettes, (x, i) => ToCTE(i, x)),
+            CTEArray("Images", file.Images, (x, i) => ToCTE(i, x, file.FileName)),
+            CTEArray("ProceduralImages", file.ProceduralImages, (x, i) => ToCTE(i, x, file.FileName)),
+            CTEArray("UsedClasses", file.UsedClasses, (x, i) => ToCTE(i, x)),
+            CTEArray("ContentTable", file.ContentTable, (x, i) => ToCTE(i, x)).With(cte => cte.DebugText = file.DebugInfo.GetContentTableText())
+        );
         root.SpreadParent();
         return root;
     }
 
     private static CustomTreeElement ToCTE(int i, UsedClass c)
     {
-        return new CustomTreeElement($"[{i}]", $"{c.Type} {c.Package}.{c.Name}",
+        return new CustomTreeElement($"[{i}]", c.ToString(),
             CTE("Package", $"{c.Package}"),
             CTE("Group", $"{c.Type}"),
-            CTE("Id?", $"{c.id}"),
+            CTE("Parent", $"{c.Parent}"),
             CTE("Name", $"{c.Name}")
         );
     }
@@ -90,7 +86,7 @@ public class CustomTreeElement : ICustomTreeElement
                 bytes[j * 3 + 2] = p.Colors[j].b;
             }
         }
-        return new CustomTreeElement($"[{i}]", $"{p.Name} ({p.W * p.H})") { Palette = BitmapSource.Create(p.W, p.H, 96, 96, PixelFormats.Rgb24, null, bytes, p.W * 3) };
+        return new CustomTreeElement($"[{i}]", $"{p.Name} ({p.W * p.H})") { InlineImage = BitmapSource.Create(p.W, p.H, 96, 96, PixelFormats.Rgb24, null, bytes, p.W * 3) };
     }
 
     private static CustomTreeElement ToCTE(int i, ImageChunk p)
@@ -105,23 +101,25 @@ public class CustomTreeElement : ICustomTreeElement
 
     private static CustomTreeElement ToCTE(UProperty p)
     {
+        string text = $"{p.Value}";
+        CustomTreeElement valueCTE = CTE("Value", text);
+        if (p.Value != null && p.Value is IUnrealStruct s)
+        {
+            text = s.GetText();
+            valueCTE.Value = s.GetText();
+            valueCTE.ChildElements.Add(s.CreateCTE());
+        }
+
         return new CustomTreeElement(
-            p.Name, p.GetValueText(),
+            p.Name, text,
             CTE("Name", p.Name),
             CTE("Type", UPropertyType.GetText(p.Type)),
-            CTE("Value", p.GetValueText())
+            valueCTE
         )
         {
-            Color = UColorToColor(p.Color),
+            Color = p.Color?.ToColor(),
             RawData = p.RawData
         };
-    }
-
-    private static System.Windows.Media.Color? UColorToColor(UColor? color)
-    {
-        if (color != null)
-            return System.Windows.Media.Color.FromRgb(color.Value.r, color.Value.g, color.Value.b);
-        else return null;
     }
 
     private static CustomTreeElement ToCTE(int i, ContentDef n)
@@ -130,7 +128,7 @@ public class CustomTreeElement : ICustomTreeElement
         return new CustomTreeElement($"[{i}]", $"{n.Name}",
             CTE("id1?", $"{n.id}"),
             CTE("id2?", $"{n.id2}"),
-            CTE("Id3?", $"{n.id3}"),
+            CTE("Id3?", $"{n.Group}"),
             CTE("Id4?", $"{n.id4}"),
             CTE("Name", $"{n.Name}"),
             CTE("Size", $"{n.Size}"),
@@ -145,11 +143,21 @@ public class CustomTreeElement : ICustomTreeElement
     {
         return new CustomTreeElement($"[{index}]", image.Name,
             CTE("EditorFullName", image.Group != null ? $"{Filename}.{image.Group}.{image.Name}" : $"{Filename}.{image.Name}", null),
-            CTEArray("Properties", [.. image.Properties.Select(ToCTE)]),
-            CTE("Palette", image.Palette.ToString()),
+            CTE("Properties", [.. image.Properties.Select(ToCTE)]),
             CTE("Width", image.Width.ToString()),
             CTE("Height", image.Height.ToString()),
-            CTEArray("MipMaps", [.. image.MipMaps.Select((x, i) => ToCTE(i, x))])
+            CTEArray("MipMaps", image.MipMaps, (x, i) => ToCTE(i, x))
+            )
+        { RawData = image.ImageHeaderRaw };
+    }
+
+    private static CustomTreeElement ToCTE(int index, ProceduralImage image, string Filename)
+    {
+        return new CustomTreeElement($"[{index}]", image.Name,
+            CTE("EditorFullName", image.Group != null ? $"{Filename}.{image.Group}.{image.Name}" : $"{Filename}.{image.Name}", null),
+            CTE("Properties", [.. image.Properties.Select(ToCTE)]),
+            CTE("Width", image.Width.ToString()),
+            CTE("Height", image.Height.ToString())
             )
         { RawData = image.ImageHeaderRaw };
     }
@@ -177,10 +185,20 @@ public class CustomTreeElement : ICustomTreeElement
         return new CustomTreeElement(name, null, childElements);
     }
 
-    private static CustomTreeElement CTEArray(string name, params CustomTreeElement[] childElements)
+    private static CustomTreeElement CTEArray<T>(
+        string name,
+        IEnumerable<T> array,
+        Func<T, int, CustomTreeElement> transform
+        )
     {
-        return new CustomTreeElement(name, $"({childElements.Length})", childElements);
+        var childElements = array.Select(transform.Invoke).ToList();
+        return new CustomTreeElement(name, $"({childElements.Count})", childElements);
     }
 
-    private static string Hex(long? value) => value == null ? "" : $"0x{value:X}";
+    public static CustomTreeElement FromValue(object value, [CallerArgumentExpression(nameof(value))] string valueName = "value")
+    {
+        return new CustomTreeElement(valueName, value.ToString());
+    }
+
+    public static string Hex(long? value) => value == null ? "" : $"0x{value:X}";
 }

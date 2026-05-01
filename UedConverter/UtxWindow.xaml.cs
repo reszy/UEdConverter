@@ -58,7 +58,6 @@ public partial class UtxWindow : Window
     private readonly ImageCache _bitmapCache = new(15_000_000);
     private Structure? _openedFile = null;
     private long _fileSize = 0;
-    private long _structureSize = 0;
     private void LoadTreeData()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog()
@@ -67,7 +66,7 @@ public partial class UtxWindow : Window
             Multiselect = false
         };
         dlg.ShowDialog();
-        if (dlg.FileName != null)
+        if (!string.IsNullOrEmpty(dlg.FileName))
         {
             var result = UtxReader.ReadFile(dlg.FileName);
             if (result.Exception != null)
@@ -79,11 +78,11 @@ public partial class UtxWindow : Window
             _fileSize = info.Length;
             var root = CustomTreeElement.BuildTreeFromFile(_openedFile);
             root.DebugText = string.Join('\n', result.Problems);
-            var elements = new List<ICustomTreeElement> { root };
+            var elements = new List<CustomTreeElement> { root };
             treeView.ItemsSource = elements;
             ExpandFirstItem();
+            UpdateBottomBar();
         }
-        UpdateBottomBar();
     }
 
     private void ExpandFirstItem()
@@ -101,10 +100,6 @@ public partial class UtxWindow : Window
 
     private void UpdateBottomBar(bool onlyCache = false)
     {
-        if (!onlyCache)
-        {
-            _structureSize = _openedFile?.GetSize() ?? 0;
-        }
         var cacheSize = _bitmapCache.CurrentSize;
         long usage = 0;
         using (var proc = Process.GetCurrentProcess())
@@ -112,7 +107,7 @@ public partial class UtxWindow : Window
             proc.Refresh();
             usage = proc.PrivateMemorySize64;
         }
-        BottomText.Text = $"Data: {GetSizeWithUnits(_structureSize)}, File: {GetSizeWithUnits(_fileSize)}, Cache: {GetSizeWithUnits(cacheSize)}, Used: {GetSizeWithUnits(usage)}";
+        BottomText.Text = $"File: {GetSizeWithUnits(_fileSize)}, Cache: {GetSizeWithUnits(cacheSize)}, Used: {GetSizeWithUnits(usage)}";
     }
 
 
@@ -164,10 +159,10 @@ public partial class UtxWindow : Window
         var groups = Regexes.IsImageRegex.Match(path).Groups;
         if (groups.Count >= 2 && int.TryParse(groups[1].Value, out var imageIndex))
         {
-            var image = _openedFile.Images[imageIndex];
+            UtxFile.Image image = _openedFile.Images[imageIndex];
             if (!image.IsCorrect) return null;
 
-            var palette = _openedFile.GetPalette(image.Palette);
+            var palette = image.Properties.GetRef<Palette>("Palette");
             if (palette?.Colors == null) return null;
             if (groups.Count == 3 && int.TryParse(groups[2].Value, out var mipMapIndex))
             {
@@ -199,7 +194,7 @@ public partial class UtxWindow : Window
         return BitmapSource.Create(width, height, 96, 96, PixelFormats.Rgb24, null, bytes, width * byteDepth);
     }
 
-    private static string GetElementPath(ICustomTreeElement element)
+    private static string GetElementPath(CustomTreeElement element)
     {
         var pathSegments = new List<string>();
         CollectPathSegments(element, pathSegments);
@@ -207,7 +202,7 @@ public partial class UtxWindow : Window
         return string.Join(".", pathSegments);
     }
 
-    private static void CollectPathSegments(ICustomTreeElement element, List<string> pathSegments)
+    private static void CollectPathSegments(CustomTreeElement element, List<string> pathSegments)
     {
         pathSegments.Add(element.Name);
         var parent = element.Parent;

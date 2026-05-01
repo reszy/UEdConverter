@@ -71,6 +71,7 @@ namespace UedConverter
                 if (!CreateWarning(analysis)) return;
 
                 ExtractButton.IsEnabled = false;
+                worker = new();
                 worker.ProgressChanged += ExtractorUpdate;
                 worker.RunWorkerCompleted += ExtractorFinished;
                 worker.WorkerReportsProgress = true;
@@ -84,7 +85,7 @@ namespace UedConverter
                             status = extractor.ExtractPartial();
                             sentWorker.ReportProgress(0, status);
                         }
-                        while (!status.Done) ;
+                        while (!status.Done);
                     }
                 };
                 worker.RunWorkerAsync();

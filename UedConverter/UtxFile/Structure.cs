@@ -3,18 +3,16 @@ using System.Text;
 
 namespace UedConverter.UtxFile;
 
-public class UString(string value) : ISizeable
+public class UString(string value)
 {
     public string Value { get; set; } = value;
     public uint Flags { get; set; }
     public RawData? RawData { get; set; }
 
-    public long GetSize() => Sizeable.GetSize(Value) + sizeof(uint) + Sizeable.GetSize(RawData);
-
     public override string ToString() => $"UString(\"{Value}\")";
 }
 
-public class UProperty(string name) : ISizeable
+public class UProperty(string name)
 {
     public string Name { get; set; } = name;
     public int Type { get; set; }
@@ -27,16 +25,7 @@ public class UProperty(string name) : ISizeable
         return $"UProperty( {Name} T={Type} V={Value} C={Color} )";
     }
 
-    public long GetSize() => sizeof(int) + sizeof(int) + sizeof(int) + Sizeable.GetSize(Color);
-
     public string GetTypeText() => UPropertyType.GetText(Type);
-    public string GetValueText()
-    {
-        return Type switch
-        {
-            _ => $"{Value}"
-        };
-    }
 }
 
 public class ObjectReference(int value)
@@ -44,8 +33,10 @@ public class ObjectReference(int value)
     public int Value { get; } = value;
 
     public string? ReferenceText { get; set; } = null;
+    public string? Name { get; set; } = null;
+    public object? Obj { get; set; } = null;
 
-    public override string ToString() => $"{Value} -> {ReferenceText}";
+    public override string ToString() => $"ObjId: ({Value}) -> {ReferenceText}";
 
     public void ResolveReference(Structure structure)
     {
@@ -53,28 +44,48 @@ public class ObjectReference(int value)
         if (Value < 0)
         {
             var classDef = structure.UsedClasses[Value * -1 - 1];
-            ReferenceText = $"{classDef.Type} {classDef.Package}.{classDef.Name}";
+            ReferenceText = classDef.ToString();
+            if (classDef?.Parent?.Name != null)
+            {
+                Name = $"{classDef.Parent.Name}.{classDef.Name}";
+            }
+            else
+            {
+                Name = classDef?.Name;
+            }
+            Obj = classDef;
         }
         if (Value > 0)
         {
             var contentDef = structure.ContentTable[Value - 1];
-            ReferenceText = $"{contentDef.Name}";
+            ReferenceText = contentDef.Name;
+            Name = contentDef.Name;
+            Obj = contentDef;
         }
     }
 };
 
 public static class UPropertyType
 {
+    public const byte Struct = 90;
+    public const byte StructIndex = 218;
+    public const byte Boolean = 211;
+    public const byte ByteEnumerated = 1;
     public const byte Reference = 5;
     public const byte NameRef = 21;
     public const byte Color = 42;
     public const byte IntIndex = 162;
     public const byte Int = 34;
+    public const byte Float = 36;
 
     public static string GetText(int type)
     {
         return type switch
         {
+            Boolean => "Boolean",
+            Struct => "Struct",
+            StructIndex => "StructIndex",
+            ByteEnumerated => "Boolean",
             Reference => "Reference",
             NameRef => "NameRef",
             Color => "Color",
@@ -98,7 +109,7 @@ public class Signature
     }
 }
 
-public class Header : ISizeable
+public class Header
 {
     public int Version { get; set; }
     public int UnknowField1 { get; set; }
@@ -110,25 +121,51 @@ public class Header : ISizeable
     public int ClassesStart { get; set; }
 
     public RawData? RawData { get; set; }
+}
 
-    public long GetSize()
+public class UProperties: List<UProperty>
+{
+    public UProperty? Find(string propertyName) => this.Find(p => p.Name == propertyName);
+    public T? GetRef<T>(string propertyName) where T : class
     {
-        return 8 * sizeof(int) + Sizeable.GetSize(RawData);
+        var property = this.Find(p => p.Name == propertyName)?.Value;
+        if (property is ObjectReference objRef && objRef.Obj is ContentDef contentDef && contentDef.Obj is T requestedValue)
+        {
+            return requestedValue;
+        }
+        else return null;
+    }
+    public T? GetObjectValue<T>(string propertyName) where T : class
+    {
+        var property = this.Find(p => p.Name == propertyName)?.Value;
+        if (property is T requestedValue)
+        {
+            return requestedValue;
+        }
+        else return null;
+    }
+    public T? GetValue<T>(string propertyName) where T : struct
+    {
+        var property = this.Find(p => p.Name == propertyName)?.Value;
+        if (property is T requestedValue)
+        {
+            return requestedValue;
+        }
+        else return null;
     }
 }
 
-public class Image(string? name = null, string? group = null) : ISizeable
+public class Image(string? name = null, string? group = null)
 {
     public string? Name { get; set; } = name;
     public string? Group { get; set; } = group;
-    public int Palette { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
     public int Size { get => Width * Height; }
     public RawData? ImageHeaderRaw { get; set; }
     public ImageChunk? ImageData { get; set; }
     public bool IsCorrect { get; set; } = false;
-    public List<UProperty> Properties { get; } = [];
+    public UProperties Properties { get; } = [];
     public List<ImageChunk> MipMaps { get; } = [];
 
     public void AddProperty(UProperty property)
@@ -138,31 +175,35 @@ public class Image(string? name = null, string? group = null) : ISizeable
         {
             case "USize": Width = Convert.ToInt32(property.Value); break;
             case "VSize": Height = Convert.ToInt32(property.Value); break;
-            case "Palette": {
-                    if (property.Value is ObjectReference objRef)
-                        Palette = objRef.Value;
-                    else
-                        Palette = Convert.ToInt32(property.Value);
-                    break;
-                }
         }
     }
 
-    public long GetSize() => 6 * sizeof(int) + Sizeable.GetSize(ImageHeaderRaw) + Sizeable.GetSize(ImageData) + sizeof(bool) + Sizeable.GetSize(Properties) + Sizeable.GetSize(MipMaps);
 }
 
-public class UsedClass : ISizeable
+public class ProceduralImage(string? name = null, string? group = null)
 {
-    public string? Package;
-    public string? Type;
-    public int? id;
-    public string? Name;
+    public string? Name { get; set; } = name;
+    public string? Group { get; set; } = group;
+    public int PaletteIndex { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int Size { get => Width * Height; }
+    public RawData? ImageHeaderRaw { get; set; }
+    public UProperties Properties { get; } = [];
 
-    public long GetSize() => 4 * sizeof(int);
-    public override string ToString() => $"{Type} {Package}.{Name} ({id})";
+    public void AddProperty(UProperty property)
+    {
+        Properties.Add(property);
+        switch (property.Name)
+        {
+            case "USize": Width = Convert.ToInt32(property.Value); break;
+            case "VSize": Height = Convert.ToInt32(property.Value); break;
+        }
+    }
+
 }
 
-public class ImageChunk : ISizeable
+public class ImageChunk
 {
     public int Width;
     public int Height;
@@ -171,20 +212,18 @@ public class ImageChunk : ISizeable
     public byte[]? Pixels;
     public RawData? RawData;
     public bool IsCorrect;
-    public long GetSize() => 4 * sizeof(int) + Sizeable.GetSize(Pixels) * sizeof(byte) + Sizeable.GetSize(RawData) + sizeof(bool);
 }
 
-public class Palette : ISizeable
+public class Palette
 {
     public string? Name { get; set; }
     public byte Type { get; set; }
     public byte W { get; set; }
     public byte H { get; set; }
     public UColor[]? Colors { get; set; }
-    public long GetSize() => 3 * sizeof(byte) + Sizeable.GetSize(Colors) * sizeof(int) + sizeof(int);
 }
 
-public struct UColor(byte r, byte g, byte b, byte a = 255) : ISizeable
+public struct UColor(byte r, byte g, byte b, byte a = 255)
 {
     public byte r = r, g = g, b = b, a = a;
 
@@ -202,45 +241,43 @@ public struct UColor(byte r, byte g, byte b, byte a = 255) : ISizeable
         return new UColor((byte)r, (byte)g, (byte)b, (byte)a);
     }
 
-    public readonly long GetSize() => 4 * sizeof(byte);
-
     public override readonly string ToString()
     {
         return $"#{r:X2}{g:X2}{b:X2}{a:X2}";
     }
+
+    public System.Windows.Media.Color? ToColor()
+    {
+        return System.Windows.Media.Color.FromRgb(r, g, b);
+    }
 }
 
-public class ContentDef : ISizeable
+public class UsedClass
 {
-    public int? id;
-    public int? id2;
+    public string? Package;
+    public string? Type;
+    public ObjectReference? Parent;
     public string? Name;
-    public int? id3;
+
+    public override string ToString() => Parent?.Name == null ? $"{Type} {Package} '{Name}'" : $"{Type} {Package} '{Parent.Name}.{Name}'";
+}
+
+public class ContentDef
+{
+    public ObjectReference? id;
+    public ObjectReference? id2;
+    public string? Name;
+    public ObjectReference? Group;
     public int? id4;
     public RawData? RawData;
     public int? Size;
     public int? Offset;
 
     public object? Obj;
-    public long GetSize() => 6 * sizeof(int) + Sizeable.GetSize(RawData);
-    public override string ToString() => $"{Name} {id} {id2} {id3} {id4} Size:{Size} Offset:{Offset}";
+    public override string ToString() => $"{Name} {id} {id2} {Group} {id4} Size:{Size} Offset:{Offset}";
 }
 
-public interface ISizeable
-{
-    long GetSize();
-}
-
-public static class Sizeable
-{
-    public static long GetSize(ISizeable? v) => v?.GetSize() ?? 0;
-    public static long GetSize(string? str) => (str != null) ? (sizeof(char) * str.Length) : 0;
-    public static long GetSize<T>(List<T>? lst) where T : ISizeable => (lst != null) ? lst.Sum(x => x.GetSize()) : 0;
-    public static long GetSize<T>(T[]? lst) where T : ISizeable => (lst != null) ? lst.Sum(x => x.GetSize()) : 0;
-    public static long GetSize(byte[]? lst) => (lst != null) ? (lst.Length * sizeof(byte)) : 0;
-}
-
-public class Structure(string filename) : ISizeable
+public class Structure(string filename)
 {
     public string FileName { get; set; } = filename;
     public Signature? Signature { get; set; }
@@ -248,6 +285,7 @@ public class Structure(string filename) : ISizeable
     public List<UString> Names { get; } = [];
     public List<Palette> Palettes { get; } = [];
     public List<Image> Images { get; } = [];
+    public List<ProceduralImage> ProceduralImages { get; } = [];
     public List<UsedClass> UsedClasses { get; } = [];
     public List<ContentDef> ContentTable { get; } = [];
     public DebugInfo DebugInfo { get; } = new();
@@ -256,40 +294,21 @@ public class Structure(string filename) : ISizeable
     {
         Names.Add(new UString(value) { Flags = flags, RawData = rawData });
     }
-
-    public Palette? GetPalette(int index)
-    {
-        var idx = index - 1;
-        if (idx >= 0)
-        {
-            if (idx < ContentTable.Count && ContentTable[idx].Obj is Palette palette)
-            {
-                return palette;
-            }
-            else if (idx < Palettes.Count)
-            {
-                return Palettes[index - 1];
-            }
-        }
-        return null;
-    }
-
-    public long GetSize()
-    {
-        return Sizeable.GetSize(FileName)
-            + Sizeable.GetSize(Header)
-            + Sizeable.GetSize(Names)
-            + Sizeable.GetSize(Palettes)
-            + Sizeable.GetSize(Images)
-            + Sizeable.GetSize(UsedClasses)
-            + Sizeable.GetSize(ContentTable);
-    }
 }
 
 public class DebugInfo
 {
+    public int FontCounter = 0;
+    public int ProceduralTextureCounter = 0;
     public int TextureCounter = 0;
     public int PaletteCounter = 0;
+
+    public string GetContentTableText() => 
+        $"Found:" +
+        $"\nFonts:{FontCounter}" +
+        $"\nProceduralTextures:{ProceduralTextureCounter}" +
+        $"\nTextures:{TextureCounter}" +
+        $"\nPalettes:{PaletteCounter}";
 }
 
 class CompactIndex
@@ -365,14 +384,12 @@ class CompactIndex
     }
 }
 
-public class RawData(byte[] data, long location) : ISizeable
+public class RawData(byte[] data, long location)
 {
     public readonly byte[] Data = data;
     public readonly long Location = location;
 
     public override string ToString() => $"RawData at 0x{Location:X} , len({Data.Length})";
-
-    public long GetSize() => Data.Length + sizeof(long);
 
     public string GetText()
     {

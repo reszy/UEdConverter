@@ -1,3 +1,4 @@
+using System.Collections;
 using System.IO;
 using System.Text;
 
@@ -61,6 +62,8 @@ public sealed class UtxReader : IDisposable
         ReadNames();
         ReadUsedClasses();
         ReadContentsTable();
+
+        ResolveObjectReferences();
 
         LoadContents();
     }
@@ -126,7 +129,7 @@ public sealed class UtxReader : IDisposable
 
     private bool ReadImage(ContentDef definition, string? group)
     {
-        if(definition.Offset == null) return false;
+        if (definition.Offset == null) return false;
         _fs.Seek((int)definition.Offset, SeekOrigin.Begin);
         Image image = new(definition.Name, group);
         var start = _fs.Position;
@@ -164,7 +167,7 @@ public sealed class UtxReader : IDisposable
     private UProperty? ReadProperty()
     {
         var start = _fs.Position;
-        var name = ReadName();
+        var name = ReadCompactIndexName();
         var property = new UProperty(name);
         if (name == "None") return null;
 
@@ -179,6 +182,11 @@ public sealed class UtxReader : IDisposable
                     objRef.ResolveReference(_structure);
                     break;
                 }
+            case UPropertyType.Float:
+                {
+                    property.Value = _br.ReadSingle();
+                    break;
+                }
             case UPropertyType.Int:
                 {
                     property.Value = _br.ReadInt32();
@@ -186,7 +194,8 @@ public sealed class UtxReader : IDisposable
                 }
             case UPropertyType.IntIndex:
                 {
-                    property.Value = _br.ReadBytes(5);
+                    property.Name += $"[{_br.ReadByte()}]";
+                    property.Value = _br.ReadInt32();
                     break;
                 }
             case UPropertyType.Color:
@@ -195,8 +204,36 @@ public sealed class UtxReader : IDisposable
                     property.Color = UColor.FromBytes(_br.ReadBytes(4));
                     break;
                 }
+            case UPropertyType.Boolean:
+            case UPropertyType.ByteEnumerated:
+                {
+                    property.Value = _br.ReadByte();
+                    break;
+                }
+            case UPropertyType.Struct:
+                {
+                    var structType = ReadCompactIndexName();
+                    var structParam = ReadCompactIndexName();
+                    property.Value = UnrealStructs.Read(_br, structType);
+                    break;
+                }
+            case UPropertyType.StructIndex:
+                {
+                    var structType = ReadCompactIndexName();
+                    var structParam = ReadCompactIndexName();
+                    var index = _br.ReadByte();
+                    if (index == 0x80)
+                    {
+                        var secondIndex = _br.ReadByte(); //dont ask me why
+                        index = secondIndex;
+                    }
+                    property.Name += $"[{index}]";
+                    property.Value = UnrealStructs.Read(_br, structType);
+                    break;
+                }
             default:
                 {
+                    _problems.Add($"Unknown type {property.Type} for UProperty({property.Name}) at 0x{start:X}");
                     property.Value = _br.ReadByte();
                     break;
                 }
@@ -210,10 +247,9 @@ public sealed class UtxReader : IDisposable
         var start = _fs.Position;
         var image = new ImageChunk();
         var calculatedSize = width * height;
-        var size = calculatedSize;
-        if (_structure.Header.Version >= 64)
+        if (_structure.Header.Version >= 63)
             _br.ReadInt32();//unknown variable
-        size = ReadCompactInt();
+        var size = ReadCompactInt();
 
         image.RawData = GetRaw(start);
         image.Pixels = _br.ReadBytes(width * height);
@@ -223,6 +259,24 @@ public sealed class UtxReader : IDisposable
         image.hPower = _br.ReadByte();
         image.IsCorrect = calculatedSize == size && image.Width == width && image.Height == height;
         return image;
+    }
+
+    private void ReadProceduralImage(ContentDef definition, string? group)
+    {
+        if (definition.Offset == null) return;
+        _fs.Seek((int)definition.Offset, SeekOrigin.Begin);
+        ProceduralImage image = new(definition.Name, group);
+        var start = _fs.Position;
+
+        //read image data
+        while (true)
+        {
+            var property = ReadProperty();
+            if (property == null) break;
+            image.AddProperty(property);
+        }
+        image.ImageHeaderRaw = GetRaw(start);
+        _structure.ProceduralImages.Add(image);
     }
 
     private void ReadUsedClasses()
@@ -235,23 +289,21 @@ public sealed class UtxReader : IDisposable
                 {
                     Package = ReadCompactIndexName(),
                     Type = ReadCompactIndexName(),
-                    id = _br.ReadInt32(),
+                    Parent = new ObjectReference(_br.ReadInt32()),
                     Name = ReadCompactIndexName()
                 });
         }
     }
 
-    private string ReadName()
-    {
-        var idx = _br.ReadByte();
-        if (idx >= _structure.Names.Count || idx < 0) return $"Index out of bounds({idx}/{_structure.Names.Count})";
-        return _structure.Names[idx].Value;
-    }
-
     private string ReadCompactIndexName()
     {
+        var start = _fs.Position;
         var idx = ReadCompactInt();
-        if (idx >= _structure.Names.Count || idx < 0) return $"Index out of bounds({idx}/{_structure.Names.Count})";
+        if (idx >= _structure.Names.Count || idx < 0)
+        {
+            _problems.Add($"Index out of bound ({idx}) for compact index at 0x{start:X}");
+            return $"Index out of bounds({idx}/{_structure.Names.Count})";
+        }
         return _structure.Names[idx].Value;
     }
 
@@ -269,9 +321,9 @@ public sealed class UtxReader : IDisposable
         {
             counter++;
             var nStart = _fs.Position;
-            var type = ReadCompactInt();
-            var type2 = ReadCompactInt();
-            var id = _br.ReadInt32();
+            var type = new ObjectReference(ReadCompactInt());
+            var type2 = new ObjectReference(ReadCompactInt());
+            var group = new ObjectReference(_br.ReadInt32());
             var name = ReadCompactIndexName();
             var idk = _br.ReadInt32();
             var size = ReadCompactInt();
@@ -280,51 +332,86 @@ public sealed class UtxReader : IDisposable
             {
                 offset = ReadCompactInt();
             }
-            _structure.ContentTable.Add(new ContentDef() { id = type, id2 = type2, Name = name, id3 = id, id4 = idk, Size = size, Offset = offset, RawData = GetRaw(nStart) });
+            _structure.ContentTable.Add(new ContentDef() { id = type, id2 = type2, Name = name, Group = group, id4 = idk, Size = size, Offset = offset, RawData = GetRaw(nStart) });
+        }
+    }
+
+    private void ResolveObjectReferences()
+    {
+        foreach (var usedClass in _structure.UsedClasses)
+        {
+            usedClass.Parent?.ResolveReference(_structure);
+        }
+        foreach (var contentDef in _structure.ContentTable)
+        {
+            contentDef.id?.ResolveReference(_structure);
+            contentDef.id2?.ResolveReference(_structure);
+            contentDef.Group?.ResolveReference(_structure);
         }
     }
 
     private void LoadContents()
     {
-        var textureId = FindClassId("Texture");
-        var paletteId = FindClassId("Palette");
-        if (textureId == null || paletteId == null) return;
+        var textureId = FindClassId("Engine", "Texture");
+        var paletteId = FindClassId("Engine", "Palette");
+        var groupId = FindClassId("Core", "Package");
         foreach (var entry in _structure.ContentTable)
         {
-            var group = FindContentDefName(entry.id3);
-            if (entry.id == paletteId)
+            var group = entry.Group?.Name;
+            if (entry.id == null)
+            {
+                _problems.Add($"Unknown content id {entry.id} with name {entry.Name}");
+                continue;
+            }
+            int id = entry.id.Value;
+            if (id == paletteId)
             {
                 ReadPalette(entry);
                 _structure.DebugInfo.PaletteCounter++;
             }
-            else if (entry.id == textureId)
+            else if (id == textureId)
             {
-                if(!ReadImage(entry, group))
+                if (!ReadImage(entry, group))
                 {
                     _problems.Add($"could not load texture {entry.Name} at 0x{entry.Offset:X}");
                 }
                 _structure.DebugInfo.TextureCounter++;
             }
+            else if (id == groupId)
+            {
+                continue;
+            }
+            else if (entry.id?.Name?.EndsWith("Texture") ?? false)
+            {
+                ReadProceduralImage(entry, group);
+                _structure.DebugInfo.ProceduralTextureCounter++;
+            }
+            else if (IsClass(entry.id, "Engine", "Font"))
+            {
+                _structure.DebugInfo.FontCounter++;
+            }
+            else
+            {
+
+                _problems.Add($"Unknown ContentDefinition {entry.Name} with reference {entry.id?.ReferenceText}");
+            }
         }
     }
 
-    private int? FindClassId(string className)
+    private bool IsClass(ObjectReference? reference, string parent, string className)
     {
-        var result = _structure.UsedClasses.FindIndex(x => x.Package == "Core" && x.Type == "Class" && x.Name == className);
-        return result > 0 ? (result + 1) * -1 : null;
-    }
-
-    private string? FindContentDefName(int? id)
-    {
-        if (id == null) return null;
-        if (id < 0 || id > _structure.ContentTable.Count)
+        if (reference != null && reference.Obj is UsedClass c)
         {
-            _problems.Add($"Cannot find ContentDefinition name with id {id}");
-            return "Error: Cannot evaluate content id is out of bounds";
+            return c.Name == className && c.Parent != null && c.Parent.Name == parent;
         }
-        if (id == 0) return null;
-        var result = _structure.ContentTable[(int)id - 1];
-        return result.Name;
+        return false;
+    }
+
+    private int? FindClassId(string parent, string className)
+    {
+        var result = _structure.UsedClasses.FindIndex(x => x.Name == className && x.Parent != null && x.Parent.Name == parent);
+        var foundIndex = (result + 1) * -1;
+        return (result < 0) ? null : foundIndex;
     }
 
     private RawData GetRaw(long start)

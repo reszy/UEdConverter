@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using UedConverter.Converter;
+using UedConverter.Image;
 
 namespace UedConverter.UtxFile;
 
@@ -76,6 +77,11 @@ internal class UtxExtractor
                 {
                     writer.WriteLine($"{entry.Key} {entry.Value.X}x{entry.Value.Y}");
                 }
+                //Temporary solution for errors
+                if (problematicFiles.Count > 0)
+                {
+                    File.WriteAllLines($"error_log_{DateTime.Now:yyyyMMdd_HHmmss}.txt", problematicFiles);
+                }
                 done = true;
             }
             else
@@ -101,11 +107,66 @@ internal class UtxExtractor
         {
             if (!string.IsNullOrEmpty(image.Name) && image.IsCorrect)
             {
-                if (textureDictionary.ContainsKey(image.Name))
-                    textureDictionary.Add($"{result.Structure.FileName}.{image.Name}", new V2d(image.Height, image.Width));
+                if (textureDictionary.TryGetValue(image.Name, out V2d? texture))
+                {
+                    if (texture.X != image.Width || texture.Y != image.Height)
+                        textureDictionary.Add($"{result.Structure.FileName}.{image.Name}", new V2d(image.Width, image.Height));
+                }
                 else
-                    textureDictionary.Add(image.Name, new V2d(image.Height, image.Width));
+                {
+                    textureDictionary.Add(image.Name, new V2d(image.Width, image.Height));
+                }
+            }
+            if(saveImages)
+            {
+                SaveImage(file.Path, image);
             }
         }
+    }
+
+    private static void SaveImage(string orginalFilePath, Image image)
+    {
+        var directory = Path.GetDirectoryName(orginalFilePath);
+        var filename = Path.GetFileNameWithoutExtension(orginalFilePath);
+        if (directory == null) return;
+
+        
+        var extractionDirectory = (image.Group != null) ? Path.Combine(directory, "ExtractedImages", filename, image.Group) : Path.Combine(directory, "ExtractedImages", filename);
+        if(!Directory.Exists(extractionDirectory))
+        {
+            Directory.CreateDirectory(extractionDirectory);
+        }
+
+        if (image.IsCorrect)
+        {
+            var finalFilename = Path.Combine(extractionDirectory, image.Name + ".png");
+            var file = new PNGFile(finalFilename, image.Width, image.Height);
+            file.SaveImage(ToPngBytes(image));
+        }
+    }
+    public static byte[] ToPngBytes(Image image)
+    {
+        var pixels = image.ImageData?.Pixels;
+        var paletteColors = image.Properties.GetRef<Palette>("Palette")?.Colors;
+        var width = image.Width;
+        var height = image.Height;
+        var maskedValue = image.Properties.GetValue<byte>("bMasked");
+        var masked = maskedValue != null && maskedValue == 0;
+        if (pixels != null && paletteColors != null)
+        {
+            long length = pixels.Length * 4 + height;
+            byte[] output = new byte[length];
+            var outPosition = 0;
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (i % width == 0) output[outPosition++] = 0x00;
+                output[outPosition++] = paletteColors[pixels[i]].r;
+                output[outPosition++] = paletteColors[pixels[i]].g;
+                output[outPosition++] = paletteColors[pixels[i]].b;
+                output[outPosition++] = (masked && pixels[i] == 0x00) ? (byte)0x00 : (byte)0xFF;
+            }
+            return output;
+        }
+        return [];
     }
 }
