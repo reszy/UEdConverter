@@ -14,10 +14,10 @@
     </UserControl.Resources>
 
     <Border Padding="4">
-        <Path x:Name="CheckMark" Width="14" Height="14"
+        <Path x:Name="CheckMark" Width="15" Height="15"
               SnapsToDevicePixels="False"
               Stroke="#FF43C943"
-              StrokeThickness="2"
-              Data="M 0 6 L 6 14 M 5 14 L 14 0"/>
+              StrokeThickness="2.5"
+              Data="M 1 9 L 6 13 L 14 4"/>
     </Border>
 </UserControl>

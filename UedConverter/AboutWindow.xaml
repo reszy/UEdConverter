@@ -9,10 +9,10 @@
     <Grid Background="{DynamicResource Background}">
         <Button Content="OK" Margin="0,0,10,10" HorizontalAlignment="Right" Width="85" Height="30" VerticalAlignment="Bottom" Click="OK_Click"/>
         <Image HorizontalAlignment="Left" Height="40" Margin="20,30,0,0" VerticalAlignment="Top" Width="40" Source="UedConverterLogo.ico" RenderTransformOrigin="0.875,1"/>
-        <Label x:Name="titleLabel" Content="Title" HorizontalAlignment="Left" Margin="120,26,0,0" VerticalAlignment="Top" Width="175" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource Text}"/>
-        <Label x:Name="versionLabel" Content="Version" HorizontalAlignment="Left" Margin="120,54,0,0" VerticalAlignment="Top" Width="145" Foreground="{DynamicResource Text}" FontSize="11"/>
+        <Label x:Name="titleLabel" Content="Title" HorizontalAlignment="Left" Margin="120,26,0,0" VerticalAlignment="Top" Width="175" FontWeight="Bold" FontSize="18"/>
+        <Label x:Name="versionLabel" Content="Version" HorizontalAlignment="Left" Margin="120,54,0,0" VerticalAlignment="Top" Width="145" FontSize="11"/>
         <TextBlock HorizontalAlignment="Left" Margin="20,86,0,0" VerticalAlignment="Top" Width="301">
-            <Hyperlink Name="gitLink" RequestNavigate="OpenUrl_Click"><TextBlock x:Name="linkText">URL</TextBlock></Hyperlink>
+            <Hyperlink Name="gitLink" RequestNavigate="OpenUrl_Click"><TextBlock x:Name="linkText" Foreground="#FF5678A2">URL</TextBlock></Hyperlink>
         </TextBlock>
     </Grid>
 </Window>

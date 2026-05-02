@@ -9,20 +9,34 @@
         Title="ExtractorWindow" d:Height="450" d:Width="800" MinWidth="600"
         Background="{DynamicResource Background}" SizeToContent="WidthAndHeight" Closing="Window_Closing">
     <StackPanel Orientation="Vertical" Margin="10">
-        <DockPanel LastChildFill="True">
-            <Button Content="File" Width="100" Margin="4" Click="File_Click"/>
-            <TextBlock x:Name="ExtractedFileText" Margin="4" Padding="4" Text="" Style="{DynamicResource TB_Path}" />
-        </DockPanel>
-        <DockPanel LastChildFill="True">
-            <Button Content="Destination" Width="100" Margin="4" Click="Destination_Click"/>
-            <TextBlock x:Name="DestinationText" Margin="4" Padding="4" Text="" Style="{DynamicResource TB_Path}" />
-        </DockPanel>
-        <CheckBox x:Name="ImagesCheckBox" Margin="5" IsEnabled="False">Extract images (Not implemented)</CheckBox>
+        <Grid RowDefinitions="34 34 34 34" ColumnDefinitions="110 *">
+            <Button Grid.Column="0" Grid.Row="0" Width="100" Margin="4" Click="File_Click">
+                <DockPanel LastChildFill="True" Width="88">
+                    <Image Margin="0 0 5 0" Source="/Icons/open-file_20x20.png" MaxHeight="20" VerticalAlignment="Center"/>
+                    <TextBlock VerticalAlignment="Center">File</TextBlock>
+                </DockPanel>
+            </Button>
+            <TextBlock Grid.Column="1" Grid.Row="0" x:Name="ExtractedFileText" Style="{DynamicResource TB_Path}" />
+            <Button Grid.Column="0" Grid.Row="1" Width="100" Margin="4" Click="Destination_Click">
+                <DockPanel LastChildFill="True" Width="88">
+                    <Image Margin="0 0 5 0" Source="/Icons/open-file_20x20.png" MaxHeight="20" VerticalAlignment="Center"/>
+                    <TextBlock VerticalAlignment="Center">Destination</TextBlock>
+                </DockPanel>
+            </Button>
+            <TextBlock Grid.Column="1" Grid.Row="1" x:Name="DirectoryText" Style="{DynamicResource TB_Path}" />
+            <TextBlock Grid.Column="0" Grid.Row="2" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Margin="4">Definitions:</TextBlock>
+            <TextBlock Grid.Column="1" Grid.Row="2" x:Name="DestinationText" Style="{DynamicResource TB_Path}" />
+            <TextBlock Grid.Column="0" Grid.Row="3" x:Name="MaterialLabel" Visibility="Collapsed" HorizontalAlignment="Stretch" TextAlignment="Right" VerticalAlignment="Center" Margin="4">Materials:</TextBlock>
+            <TextBlock Grid.Column="1" Grid.Row="3" x:Name="MaterialText" Visibility="Collapsed" Style="{DynamicResource TB_Path}" />
+        </Grid>
+        <Separator Margin="5 10"/>
+        <CheckBox x:Name="ImagesCheckBox" Margin="5" Click="MaterialOrImages_Checked">Extract images (Not implemented)</CheckBox>
+        <CheckBox x:Name="CreateMaterialCheckBox" Margin="15 5 5 5" IsEnabled="{Binding IsChecked, ElementName=ImagesCheckBox}" Click="MaterialOrImages_Checked" >Create material file .mtl</CheckBox>
         <CheckBox x:Name="AllFilesCheckBox" Margin="5" IsChecked="True">Extract all files from directory</CheckBox>
 
         <c:CenterFirstPanel>
-            <Button x:Name="ExtractButton" Margin="5" Width="90" Click="Extract_Click">Extract</Button>
-            <TextBlock x:Name="ProgressText"  Margin="5" Foreground="{DynamicResource Text}" />
+            <Button x:Name="ExtractButton" Margin="5" Width="90" Height="24" Click="Extract_Click">Extract</Button>
+            <TextBlock x:Name="ProgressText"  Margin="5" Foreground="{DynamicResource Text}"/>
             <c:FadingMark x:Name="ExtractorMark" Margin="5" VerticalAlignment="Center"/>
         </c:CenterFirstPanel>
     </StackPanel>

@@ -12,11 +12,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="UedConverterLogo.ico" />
+    <None Remove="Icons\check_30x30.png" />
+    <None Remove="Icons\open-file_20x20.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Image\" />
+    <Resource Include="Icons\open-file_20x20.png" />
+    <Resource Include="UedConverterLogo.ico" />
   </ItemGroup>
 
 </Project>

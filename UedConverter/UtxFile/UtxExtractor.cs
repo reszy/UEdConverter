@@ -15,22 +15,28 @@ internal class UtxExtractor
 {
     private readonly string[] path;
     private readonly string destination;
+    private readonly string materialDestination;
     private readonly bool all;
+    private readonly bool createMtl;
     private readonly bool saveImages;
     private readonly List<UtxFilePath> files = [];
     private readonly List<string> problematicFiles = [];
 
     private int extractionCurrentFile;
     private bool started = false;
+    private bool done = false;
 
     private readonly Dictionary<string, V2d> textureDictionary = [];
+    private readonly Dictionary<string, string> savedImages = [];
 
-    public UtxExtractor(string[] path, string destination, bool all, bool saveImages)
+    public UtxExtractor(string[] path, string destination, string materialDestination, bool all, bool saveImages, bool createMtl)
     {
         this.path = path;
         this.destination = destination;
+        this.materialDestination = materialDestination;
         this.all = all;
         this.saveImages = saveImages;
+        this.createMtl = createMtl;
         if (path.Length <= 0) throw new ArgumentException("No files selected");
     }
 
@@ -67,35 +73,59 @@ internal class UtxExtractor
 
     public ExtractorStatus ExtractPartial()
     {
-        var done = false;
         if (started)
         {
             if (extractionCurrentFile == files.Count)
             {
-                using var writer = new StreamWriter(destination);
-                foreach (var entry in textureDictionary)
-                {
-                    writer.WriteLine($"{entry.Key} {entry.Value.X}x{entry.Value.Y}");
-                }
-                //Temporary solution for errors
-                if (problematicFiles.Count > 0)
-                {
-                    File.WriteAllLines($"error_log_{DateTime.Now:yyyyMMdd_HHmmss}.txt", problematicFiles);
-                }
+                SaveOutput();
                 done = true;
             }
             else
             {
                 ExtractFile();
+                extractionCurrentFile++;
             }
-            extractionCurrentFile++;
         }
         else
         {
-            started = true;
             extractionCurrentFile = 0;
+            started = true;
         }
         return new ExtractorStatus(extractionCurrentFile, files.Count, done);
+    }
+
+    private void SaveOutput()
+    {
+        using var writer = new StreamWriter(destination);
+        foreach (var entry in textureDictionary)
+        {
+            writer.WriteLine($"{entry.Key} {entry.Value.X}x{entry.Value.Y}");
+        }
+        if (createMtl && savedImages.Count > 0)
+        {
+            using var mtlWriter = new StreamWriter(materialDestination);
+            foreach (var entry in savedImages)
+            {
+                WriteMtlEntry(mtlWriter, entry);
+            }
+        }
+        //Temporary solution for errors
+        if (problematicFiles.Count > 0)
+        {
+            File.WriteAllLines($"error_log_{DateTime.Now:yyyyMMdd_HHmmss}.txt", problematicFiles);
+        }
+    }
+
+    private static void WriteMtlEntry(StreamWriter writer, KeyValuePair<string, string> entry)
+    {
+        writer.WriteLine();
+        writer.WriteLine($"newmtl {entry.Key}");
+        writer.WriteLine("   Ns 250.000000");
+        writer.WriteLine("   Ks 0.500000 0.500000 0.500000");
+        writer.WriteLine("   d 1.000000");
+        writer.WriteLine("   illum 0");
+        writer.WriteLine($"   map_Kd {entry.Value}");
+        writer.WriteLine();
     }
 
     private void ExtractFile()
@@ -107,43 +137,64 @@ internal class UtxExtractor
         {
             if (!string.IsNullOrEmpty(image.Name) && image.IsCorrect)
             {
-                if (textureDictionary.TryGetValue(image.Name, out V2d? texture))
+                var savedAs = AddTextureToDictionary(result.Structure.FileName, image.Name, image.Width, image.Height);
+                if (saveImages)
                 {
-                    if (texture.X != image.Width || texture.Y != image.Height)
-                        textureDictionary.Add($"{result.Structure.FileName}.{image.Name}", new V2d(image.Width, image.Height));
-                }
-                else
-                {
-                    textureDictionary.Add(image.Name, new V2d(image.Width, image.Height));
+                    SaveImage(file.Path, image, savedAs);
                 }
             }
-            if(saveImages)
+        }
+        foreach (var proceduralImage in result.Structure.ProceduralImages)
+        {
+            if (!string.IsNullOrEmpty(proceduralImage.Name))
             {
-                SaveImage(file.Path, image);
+                AddTextureToDictionary(result.Structure.FileName, proceduralImage.Name, proceduralImage.Width, proceduralImage.Height);
             }
         }
     }
 
-    private static void SaveImage(string orginalFilePath, Image image)
+    private string AddTextureToDictionary(string filename, string name, int width, int height)
+    {
+        var finalTextureName = name;
+        if (textureDictionary.TryGetValue(name, out V2d? texture))
+        {
+            if (texture.X != width || texture.Y != height)
+            {
+                finalTextureName = $"{filename}.{name}";
+                textureDictionary.Add(finalTextureName, new V2d(width, height));
+            }
+        }
+        else
+        {
+            textureDictionary.Add(finalTextureName, new V2d(width, height));
+        }
+        return finalTextureName;
+    }
+
+
+    private void SaveImage(string orginalFilePath, Image image, string textureName)
     {
         var directory = Path.GetDirectoryName(orginalFilePath);
         var filename = Path.GetFileNameWithoutExtension(orginalFilePath);
         if (directory == null) return;
 
-        
+
         var extractionDirectory = (image.Group != null) ? Path.Combine(directory, "ExtractedImages", filename, image.Group) : Path.Combine(directory, "ExtractedImages", filename);
-        if(!Directory.Exists(extractionDirectory))
+        if (!Directory.Exists(extractionDirectory))
         {
             Directory.CreateDirectory(extractionDirectory);
         }
 
-        if (image.IsCorrect)
+        var finalFilename = Path.Combine(extractionDirectory, image.Name + ".png");
+        var file = new PngFile(finalFilename, image.Width, image.Height);
+        file.SaveImage(ToPngBytes(image));
+
+        if (createMtl)
         {
-            var finalFilename = Path.Combine(extractionDirectory, image.Name + ".png");
-            var file = new PNGFile(finalFilename, image.Width, image.Height);
-            file.SaveImage(ToPngBytes(image));
+            savedImages[textureName] = Path.GetRelativePath(directory, finalFilename);
         }
     }
+
     public static byte[] ToPngBytes(Image image)
     {
         var pixels = image.ImageData?.Pixels;

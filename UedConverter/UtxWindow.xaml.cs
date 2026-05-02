@@ -98,7 +98,7 @@ public partial class UtxWindow : Window
         firstItem.IsSelected = true;
     }
 
-    private void UpdateBottomBar(bool onlyCache = false)
+    private void UpdateBottomBar()
     {
         var cacheSize = _bitmapCache.CurrentSize;
         long usage = 0;
@@ -140,7 +140,7 @@ public partial class UtxWindow : Window
                         var (pixels, width, height, palette) = image.Value;
                         var bitmap = CreateBitmap(pixels, width, height, palette);
                         _bitmapCache.Add(path, bitmap);
-                        UpdateBottomBar(true);
+                        UpdateBottomBar();
                         imageBox.Source = bitmap;
                     }
                 }

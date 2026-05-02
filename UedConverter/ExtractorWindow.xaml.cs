@@ -15,7 +15,9 @@ namespace UedConverter
     {
         private string[]? fileNames = null;
         private string? destination = null;
-        private readonly BackgroundWorker worker = new();
+        private BackgroundWorker worker = new();
+        private string materialPath = "";
+        private string directoryPath = "";
 
         public ExtractorWindow()
         {
@@ -56,6 +58,10 @@ namespace UedConverter
             {
                 destination = dlg.FileName;
                 DestinationText.Text = destination;
+                directoryPath = Path.GetDirectoryName(destination) ?? "";
+                materialPath = Path.Combine(directoryPath, "materials.mtl");
+                DirectoryText.Text = directoryPath;
+                MaterialText.Text = materialPath;
             }
             ValidateExtractinoButton();
         }
@@ -65,7 +71,10 @@ namespace UedConverter
             if (fileNames == null || destination == null) return;
             try
             {
-                var extractor = new UtxExtractor(fileNames, destination, AllFilesCheckBox.IsChecked == true, ImagesCheckBox.IsChecked == true);
+                var extractor = new UtxExtractor(fileNames, destination, materialPath,
+                                                 AllFilesCheckBox.IsChecked == true, 
+                                                 ImagesCheckBox.IsChecked == true,
+                                                 CreateMaterialCheckBox.IsChecked == true);
 
                 var analysis = extractor.Analyze();
                 if (!CreateWarning(analysis)) return;
@@ -150,6 +159,14 @@ namespace UedConverter
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             worker.Dispose();
+        }
+
+        private void MaterialOrImages_Checked(object sender, RoutedEventArgs e)
+        {
+            var show = ImagesCheckBox.IsChecked == true && CreateMaterialCheckBox.IsChecked == true;
+            var visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            MaterialText.Visibility = visibility;
+            MaterialLabel.Visibility = visibility;
         }
     }
 }
