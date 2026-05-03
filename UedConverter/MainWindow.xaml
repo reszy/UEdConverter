@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:UedConverter"
         xmlns:c="clr-namespace:UedConverter.Components"
         mc:Ignorable="d"
-        Title="UedConverter" Width="639" ResizeMode="CanMinimize" SizeToContent="Height">
+        Title="UedConverter" Width="639" ResizeMode="CanMinimize" SizeToContent="Height" Loaded="Window_Loaded" Closing="Window_Closing">
     <StackPanel Background="{DynamicResource Background}">
         <GroupBox Header="T3D -> OBJ" x:Name="U2O_Group" Drop="File_Drop" AllowDrop="True" DragLeave="File_DragLeave" DragEnter="File_DragEnter">
             <StackPanel>

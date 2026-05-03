@@ -2,13 +2,26 @@ using System.Globalization;
 
 namespace UedConverter.Converter.FileUtils;
 
-public class ObjFile
+public partial class ObjFile
 {
+    private const char OBJ_NUMBER_SEPARATOR = ' ';
     public string ObjectName { get; set; }
     public List<V3d> Vertexes { get; set; }
     public List<V2d> TextureVertexes { get; set; }
     public List<V3d> VertexNormals { get; set; }
     public List<Face> Faces { get; set; }
+
+    public static class FileSyntax
+    {
+        public const string COMMENT = "#";
+        public const string OBJECT_NAME = "o";
+        public const string SMOOTH = "s";
+        public const string FACE = "f";
+        public const string MATERIAL = "usemtl";
+        public const string MATERIAL_LIB = "mtllib";
+        public const string NORMAL = "vn";
+        public const string VERTEX = "v";
+    }
 
     public class Face
     {
@@ -100,7 +113,7 @@ public class ObjFile
 
     class FileBuilder(string objectName)
     {
-        private readonly List<string> lines = ["#UedConverter OBJ File", "o " + objectName];
+        private readonly List<string> lines = ["#UedConverter OBJ File", "o " + objectName, "mtllib materials.mtl"];
 
         private string? lastMaterialUsed = null;
 
@@ -129,7 +142,7 @@ public class ObjFile
         {
             if (value.material != lastMaterialUsed)
             {
-                lines.Add($"{FileSyntax.Obj.MATERIAL} {value.material}");
+                lines.Add($"{FileSyntax.MATERIAL} {value.material}");
                 lastMaterialUsed = value.material;
             }
 

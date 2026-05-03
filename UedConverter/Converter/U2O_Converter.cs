@@ -6,16 +6,15 @@ namespace UedConverter.Converter;
 
 public class U2O_Converter(bool loadTextureData) : IUedConverter
 {
-    private const char T3D_NUMBER_SEPARATOR = ',';
 
     private readonly Dictionary<string, USize> textureData = loadTextureData ? TextureSizeDictionary.Load() : [];
-    private readonly List<Polygon> loadedPolygons = [];
+    private const double toObjScale = 0.01;
     public HashSet<string> MissingTextureData { get; private set; } = [];
 
     public string[] Convert(string[] input)
     {
         MissingTextureData = [];
-        List<Polygon> polygons = Read(input);
+        List<Polygon> polygons = T3dFileReader.Read(input);
         return ConvertToObj(polygons);
     }
 
@@ -31,8 +30,9 @@ public class U2O_Converter(bool loadTextureData) : IUedConverter
         {
             ObjFile.Face face = new(polygon.Texture);
             file.VertexNormals.Add(polygon.Normal);
-            foreach (var vertex in polygon.Vertexes)
+            foreach (var rawVertex in polygon.Vertexes)
             {
+                var vertex = ConvertAxisToObj(rawVertex) * toObjScale;
                 var foundVertex = file.Vertexes.Find(v => v.Equals(vertex));
                 int number;
                 if (foundVertex == null)
@@ -44,7 +44,7 @@ public class U2O_Converter(bool loadTextureData) : IUedConverter
                 {
                     number = file.Vertexes.IndexOf(foundVertex);
                 }
-                file.TextureVertexes.Add(ConvertTextureSpace(vertex, polygon.Origin, polygon.TextureU, polygon.TextureV, polygon.Texture));
+                file.TextureVertexes.Add(ConvertTextureSpace(rawVertex, polygon));
                 face.AddComponent(new ObjFile.Face.Component(number, vertexNumber, polygonNumber));
                 vertexNumber++;
             }
@@ -54,103 +54,34 @@ public class U2O_Converter(bool loadTextureData) : IUedConverter
         return file.Write();
     }
 
-    private V2d ConvertTextureSpace(V3d vertex, V3d origin, V3d textureU, V3d textureV, string? textureName)
+    private static V3d ConvertAxisToObj(V3d input)
+    {
+        return new(input.X, input.Z, input.Y);
+    }
+
+    private V2d ConvertTextureSpace(V3d vertex, Polygon polygon)
     {
         var uScale = 64;
         var vScale = 64;
-        if (textureName != null)
+        var textureU = polygon.TextureU;
+        var textureV = polygon.TextureV;
+        var origin = polygon.Origin;
+        var pan = polygon.Pan;
+        if (polygon.Texture != null)
         {
-            if (textureData.TryGetValue(textureName, out var size))
+            if (textureData.TryGetValue(polygon.Texture, out var size))
             {
                 uScale = size.Width;
                 vScale = size.Height;
             }
             else
             {
-                MissingTextureData.Add(textureName);
+                MissingTextureData.Add(polygon.Texture);
             }
         }
-        var u = textureU.Dot(vertex - origin) / uScale;
-        var v = textureV.Dot(vertex - origin) / vScale;
+        var u = (textureU.Dot(vertex - origin) + pan.U) / uScale;
+        var v = (textureV.Dot(vertex - origin) + pan.V) / vScale * -1;
         return new V2d(u, v);
     }
-
-    private static void InvalidSyntaxError(int line, string additional = "")
-    {
-        additional = string.IsNullOrEmpty(additional) ? "" : additional;
-        throw new ConvertionException("Invalid syntax on line " + (line + 1) + ". " + additional);
-    }
-
-    private static string GetSyntax(string line)
-    {
-        var trimmed = line.Trim();
-        return trimmed[..trimmed.IndexOf(' ')];
-    }
-
-    private static string GetNumbers(string line)
-    {
-        var trimmed = line.Trim();
-        return trimmed[trimmed.IndexOf(' ')..].Trim();
-    }
-
-    private List<Polygon> Read(string[] input)
-    {
-        if (input[0].Trim().Contains(Begin(FileSyntax.T3d.MAP)))
-            throw new ConvertionException("Map t3d is not supported, as it doesn't contain calculated geometry.");
-
-        if (!input[0].Trim().Contains(Begin(FileSyntax.T3d.POLY_LIST)))
-            InvalidSyntaxError(0);
-
-        if (!input[^1].Trim().Contains(End(FileSyntax.T3d.POLY_LIST)))
-            InvalidSyntaxError(input.Length - 1);
-
-        for (int line = 1; line < input.Length; line++)
-        {
-            if (input[line].Trim().Contains(Begin(FileSyntax.T3d.POLYGON)))
-            {
-                Polygon polygon = new();
-                polygon.ParseAttributes(input[line]);
-                loadedPolygons.Add(polygon);
-                while (line < input.Length)
-                {
-                    if (input[line].Trim().Contains(End(FileSyntax.T3d.POLYGON)))
-                        break;
-
-                    try
-                    {
-                        var syntax = GetSyntax(input[line]);
-                        var numbers = GetNumbers(input[line]);
-                        switch (syntax)
-                        {
-                            case FileSyntax.T3d.ORIGIN:
-                                polygon.Origin = V3d.Parse(numbers, T3D_NUMBER_SEPARATOR);
-                                break;
-                            case FileSyntax.T3d.NORMAL:
-                                polygon.Normal = V3d.Parse(numbers, T3D_NUMBER_SEPARATOR);
-                                break;
-                            case FileSyntax.T3d.TEXTURE_U:
-                                polygon.TextureU = V3d.Parse(numbers, T3D_NUMBER_SEPARATOR);
-                                break;
-                            case FileSyntax.T3d.TEXTURE_V:
-                                polygon.TextureV = V3d.Parse(numbers, T3D_NUMBER_SEPARATOR);
-                                break;
-                            case FileSyntax.T3d.VERTEX:
-                                polygon.Vertexes.Add(V3d.Parse(numbers, T3D_NUMBER_SEPARATOR));
-                                break;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        InvalidSyntaxError(line, e.Message);
-                    }
-                    line++;
-                }
-                if (line >= input.Length)
-                {
-                    InvalidSyntaxError(line, "Cannot find " + End(FileSyntax.T3d.POLYGON));
-                }
-            }
-        }
-        return loadedPolygons;
-    }
+    
 }

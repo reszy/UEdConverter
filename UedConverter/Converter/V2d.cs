@@ -32,6 +32,15 @@ public class V2d
     }
 
 
+    public static V2d operator +(V2d left, UVi right)
+    {
+        return new V2d(
+            left.X + right.U,
+            left.Y + right.V
+            );
+    }
+
+
     public static V2d operator -(V2d left, V2d right)
     {
         return new V2d(

@@ -24,20 +24,6 @@ namespace UedConverter
             calculateTxSpaceChBox.IsEnabled = TextureSizeDictionary.IsAvailable();
         }
 
-        enum FileType
-        {
-            [StringValue("Wavefront | *.obj")]
-            OBJ,
-            [StringValue("UEd Brush | *.t3d")]
-            T3D
-        }
-
-        enum ConversionType
-        {
-            ToObj,
-            ToT3D,
-        }
-
         private string? U2O_File_Path;
         private string? U2O_Destination_Path;
         private string? O2U_File_Path;
@@ -48,21 +34,33 @@ namespace UedConverter
 
         private static string OpenDialog(FileType type)
         {
+            string? initialDirectory = PersistentSettings.Settings.GetUsedPath(type);
             var dlg = new Microsoft.Win32.OpenFileDialog()
             {
-                Filter = StringValue.GetStringValue(type)
+                Filter = StringValue.GetStringValue(type),
+                InitialDirectory = initialDirectory,
             };
             dlg.ShowDialog();
+            if (!string.IsNullOrEmpty(dlg.FileName))
+            {
+                PersistentSettings.Settings.SaveUsedPath(type, dlg.FileName);
+            }
             return dlg.FileName;
         }
 
         private static string SaveDialog(FileType type)
         {
+            string? initialDirectory = PersistentSettings.Settings.GetUsedPath(type);
             var dlg = new Microsoft.Win32.SaveFileDialog()
             {
-                Filter = StringValue.GetStringValue(type)
+                Filter = StringValue.GetStringValue(type),
+                InitialDirectory = initialDirectory
             };
             dlg.ShowDialog();
+            if (!string.IsNullOrEmpty(dlg.FileName))
+            {
+                PersistentSettings.Settings.SaveUsedPath(type, dlg.FileName);
+            }
             return dlg.FileName;
         }
 
@@ -90,7 +88,7 @@ namespace UedConverter
                     );
                 return;
             }
-            if(ReadConvertSave(U2O_Destination_Path, U2O_File_Path, new U2O_Converter(calculateTxSpaceChBox.IsChecked ?? false)))
+            if (ReadConvertSave(U2O_Destination_Path, U2O_File_Path, new U2O_Converter(calculateTxSpaceChBox.IsChecked ?? false)))
             {
                 U2O_Mark.Show(TimeSpan.FromSeconds(2));
             }
@@ -124,7 +122,7 @@ namespace UedConverter
                     );
                 return;
             }
-            if(ReadConvertSave(O2U_Destination_Path, O2U_File_Path, new O2U_Converter()))
+            if (ReadConvertSave(O2U_Destination_Path, O2U_File_Path, new O2U_Converter()))
             {
                 O2U_Mark.Show(TimeSpan.FromSeconds(2));
             }
@@ -140,16 +138,16 @@ namespace UedConverter
                 File.WriteAllLines(destination, convertedFileContents);
                 success = true;
             }
-            catch(ConvertionException e)
+            catch (ConvertionException e)
             {
                 ShowError(e.Message);
             }
-            catch(Exception)
+            catch (Exception)
             {
                 ShowError("Something is no yes");
             }
 
-            if(converter is U2O_Converter u2o)
+            if (converter is U2O_Converter u2o)
             {
                 if (u2o.MissingTextureData.Count > 0)
                 {
@@ -243,11 +241,14 @@ namespace UedConverter
                         {
                             HighlightGroup(ConversionType.ToObj, fileType.Value);
                         }
-                    } else
+                    }
+                    else
                     {
                         ClearHighlight();
                     }
-                } catch(Exception) {
+                }
+                catch (Exception)
+                {
                     ClearHighlight();
                 }
             }
@@ -296,7 +297,7 @@ namespace UedConverter
 
         private void HighlightGroup(ConversionType conversionType, FileType fileType)
         {
-            if(conversionType == ConversionType.ToT3D)
+            if (conversionType == ConversionType.ToT3D)
             {
                 if (fileType == FileType.OBJ) O2U_File_Textbox.Background = HighlightColor;
                 if (fileType == FileType.T3D) O2U_Destination_Textbox.Background = HighlightColor;
@@ -319,7 +320,7 @@ namespace UedConverter
 
         private static FileType? GetFileType(string file)
         {
-            if (file == null)  return null;
+            if (file == null) return null;
             if (file.EndsWith("t3d", true, CultureInfo.InvariantCulture))
             {
                 return FileType.T3D;
@@ -329,6 +330,16 @@ namespace UedConverter
                 return FileType.OBJ;
             }
             return null;
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            PersistentSettings.Save();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            PersistentSettings.Load();
         }
     }
 }

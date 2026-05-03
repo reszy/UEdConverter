@@ -39,6 +39,15 @@ public class V3d
         return "X=\"" + X + "\", Y=\"" + Y + "\", Z=\"" + Z + '"';
     }
 
+    public static V3d operator *(V3d left, double right)
+    {
+        return new V3d(
+            left.X * right,
+            left.Y * right,
+            left.Z * right
+            );
+    }
+
     public static V3d operator +(V3d left, V3d right)
     {
         return new V3d(

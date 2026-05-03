@@ -5,30 +5,11 @@ namespace UedConverter.Converter;
 
 class O2U_Converter : IUedConverter
 {
-    private const char T3D_NUMBER_SEPARATOR = ' ';
-
+    private const double toT3dScale = 100.0;
     public string[] Convert(string[] input)
     {
-        var data = Read(input);
+        var data = ObjFile.ObjFileReader.Read(input);
         return ConvertToT3d(data);
-    }
-
-    public static ObjFile Read(string[] lines)
-    {
-        ObjFile data = new();
-        foreach(var line in lines)
-        {
-            string syntax = line[0..2].Trim();
-            if (syntax.Equals(FileSyntax.Obj.VERTEX))
-            {
-                data.Vertexes.Add(V3d.Parse(line[1..], T3D_NUMBER_SEPARATOR));
-            }
-            if (syntax.Equals(FileSyntax.Obj.FACE))
-            {
-                data.AddFace(ObjFile.Face.Parse(line[1..]));
-            }
-        }
-        return data;
     }
 
     public static string[] ConvertToT3d(ObjFile data)
@@ -39,7 +20,7 @@ class O2U_Converter : IUedConverter
             List<V3d> vertexes = [];
             foreach (var component in face.faceComponents)
             {
-                vertexes.Add(data.Vertexes[component.vertexRef - 1]);
+                vertexes.Add(ConvertAxisToT3d(data.Vertexes[component.vertexRef - 1]) * toT3dScale);
             }
             Polygon polygon = new()
             {
@@ -49,5 +30,10 @@ class O2U_Converter : IUedConverter
         }
         T3dFile file = new(polygons);
         return file.Write();
+    }
+
+    private static V3d ConvertAxisToT3d(V3d input)
+    {
+        return new(input.X, input.Z, input.Y);
     }
 }
