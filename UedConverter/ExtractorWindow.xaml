@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:UedConverter"
         xmlns:c="clr-namespace:UedConverter.Components"
         mc:Ignorable="d"
-        Title="ExtractorWindow" d:Height="450" d:Width="800" MinWidth="600"
+        Title="Utx Extractor" d:Height="450" d:Width="800" MinWidth="600"
         Background="{DynamicResource Background}" SizeToContent="WidthAndHeight" Closing="Window_Closing">
     <StackPanel Orientation="Vertical" Margin="10">
         <Grid RowDefinitions="34 34 34 34" ColumnDefinitions="110 *">

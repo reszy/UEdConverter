@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UedConverter"
         mc:Ignorable="d"
-        Title="AboutWindow" Height="192" Width="339" ResizeMode="NoResize">
+        Title="About" Height="192" Width="339" ResizeMode="NoResize">
     <Grid Background="{DynamicResource Background}">
         <Button Content="OK" Margin="0,0,10,10" HorizontalAlignment="Right" Width="85" Height="30" VerticalAlignment="Bottom" Click="OK_Click"/>
         <Image HorizontalAlignment="Left" Height="40" Margin="20,30,0,0" VerticalAlignment="Top" Width="40" Source="UedConverterLogo.ico" RenderTransformOrigin="0.875,1"/>

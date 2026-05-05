@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UedConverter"
         mc:Ignorable="d"
-        Title="UtxWindow" MinWidth="840" MinHeight="512" SizeToContent="Width"
+        Title="Utx Data Browser" MinWidth="840" MinHeight="512" SizeToContent="Width"
         Background="{DynamicResource Background}">
     <Window.Resources>
         <local:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
