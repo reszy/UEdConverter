@@ -12,7 +12,7 @@ public struct USize(int Width, int Height)
 
 internal static partial class TextureSizeDictionary
 {
-    private const string TextureSizeDictionaryFilename = "texture_dict.txt";
+    public const string TextureSizeDictionaryFilename = "texture_dict.txt";
 
     /// <summary>
     /// Only check file existence

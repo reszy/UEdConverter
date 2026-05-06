@@ -7,9 +7,7 @@ using UedConverter.UtxFile;
 
 namespace UedConverter
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
+
     public partial class MainWindow : Window
     {
         public MainWindow()
@@ -17,7 +15,12 @@ namespace UedConverter
             InitializeComponent();
             RegularColor = U2O_Destination_Textbox.Background;
             this.Title = this.Title + " - " + Version.GetVersion();
-            calculateTxSpaceChBox.IsEnabled = TextureSizeDictionary.IsAvailable();
+            var textureSizeDictionaryAvailable = TextureSizeDictionary.IsAvailable();
+            calculateTxSpaceChBox.IsEnabled = textureSizeDictionaryAvailable;
+            if(!textureSizeDictionaryAvailable && calculateTxSpaceChBox.Content is string calculateTxSpaceChBoxText)
+            {
+                calculateTxSpaceChBox.Content = calculateTxSpaceChBoxText + $" ({TextureSizeDictionary.TextureSizeDictionaryFilename} not found)";
+            }
         }
 
         private string? U2O_File_Path;
@@ -316,16 +319,13 @@ namespace UedConverter
 
         private static FileType? GetFileType(string file)
         {
-            if (file == null) return null;
-            if (file.EndsWith("t3d", true, CultureInfo.InvariantCulture))
+            var extension = Path.GetExtension(file).ToLower(CultureInfo.InvariantCulture);
+            return extension switch
             {
-                return FileType.T3D;
-            }
-            if (file.EndsWith("obj", true, CultureInfo.InvariantCulture))
-            {
-                return FileType.OBJ;
-            }
-            return null;
+                "t3d" => FileType.T3D,
+                "obj" => FileType.OBJ,
+                _ => null
+            };
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

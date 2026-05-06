@@ -9,16 +9,16 @@
         Title="Utx Extractor" d:Height="450" d:Width="800" MinWidth="600"
         Background="{DynamicResource Background}" SizeToContent="WidthAndHeight" Closing="Window_Closing">
     <StackPanel Orientation="Vertical" Margin="10">
-        <Grid RowDefinitions="34 34 34 34" ColumnDefinitions="110 *">
-            <Button Grid.Column="0" Grid.Row="0" Width="100" Margin="4" Click="File_Click">
-                <DockPanel LastChildFill="True" Width="88">
+        <Grid RowDefinitions="34 34 34 34" ColumnDefinitions="115 *">
+            <Button Grid.Column="0" Grid.Row="0" Margin="4" Click="File_Click" ToolTip="Utx file or files that wiil be extracted">
+                <DockPanel LastChildFill="True" Width="95">
                     <Image Margin="0 0 5 0" Source="/Icons/open-file_20x20.png" MaxHeight="20" VerticalAlignment="Center"/>
                     <TextBlock VerticalAlignment="Center">File</TextBlock>
                 </DockPanel>
             </Button>
             <TextBlock Grid.Column="1" Grid.Row="0" x:Name="ExtractedFileText" Style="{DynamicResource TB_Path}" />
-            <Button Grid.Column="0" Grid.Row="1" Width="100" Margin="4" Click="Destination_Click">
-                <DockPanel LastChildFill="True" Width="88">
+            <Button Grid.Column="0" Grid.Row="1" Margin="4" Click="Destination_Click" ToolTip="Choose location of new files">
+                <DockPanel LastChildFill="True" Width="95">
                     <Image Margin="0 0 5 0" Source="/Icons/open-file_20x20.png" MaxHeight="20" VerticalAlignment="Center"/>
                     <TextBlock VerticalAlignment="Center">Destination</TextBlock>
                 </DockPanel>
@@ -30,8 +30,8 @@
             <TextBlock Grid.Column="1" Grid.Row="3" x:Name="MaterialText" Visibility="Collapsed" Style="{DynamicResource TB_Path}" />
         </Grid>
         <Separator Margin="5 10"/>
-        <CheckBox x:Name="ImagesCheckBox" Margin="5" Click="MaterialOrImages_Checked">Extract images (Not implemented)</CheckBox>
-        <CheckBox x:Name="CreateMaterialCheckBox" Margin="15 5 5 5" IsEnabled="{Binding IsChecked, ElementName=ImagesCheckBox}" Click="MaterialOrImages_Checked" >Create material file .mtl</CheckBox>
+        <CheckBox x:Name="ImagesCheckBox" Margin="5" Click="MaterialOrImages_Checked">Extract images to png</CheckBox>
+        <CheckBox x:Name="CreateMaterialCheckBox" Margin="15 5 5 5" IsEnabled="{Binding IsChecked, ElementName=ImagesCheckBox}" Click="MaterialOrImages_Checked" >Create material file (.mtl)</CheckBox>
         <CheckBox x:Name="AllFilesCheckBox" Margin="5" IsChecked="True">Extract all files from directory</CheckBox>
 
         <c:CenterFirstPanel>

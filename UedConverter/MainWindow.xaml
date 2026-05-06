@@ -18,7 +18,7 @@
                     <Button Content="Destination" Width="100" Margin="4" Click="U2O_Destination_Click"/>
                     <TextBlock x:Name="U2O_Destination_Textbox" Margin="4" Padding="4" Text="" Style="{DynamicResource TB_Path}" />
                 </DockPanel>
-                <CheckBox x:Name="calculateTxSpaceChBox" Margin="5" IsEnabled="False">Calculate Texture Space (Experimental. Requires file with texture sizes)</CheckBox>
+                <CheckBox x:Name="calculateTxSpaceChBox" Margin="5" IsEnabled="False">Correct UV dimensions</CheckBox>
                 <c:CenterFirstPanel>
                     <Button Content="Convert" Height="25" Margin="5" HorizontalAlignment="Center" Width="100" Click="U2O_Convert_Click" />
                     <c:FadingMark x:Name="U2O_Mark" VerticalAlignment="Center"/>
