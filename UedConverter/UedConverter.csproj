@@ -9,12 +9,8 @@
     <StartupObject>UedConverter.App</StartupObject>
     <ApplicationIcon>UedConverterLogo.ico</ApplicationIcon>
     <AssemblyVersion>0.10.0.1</AssemblyVersion>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="Icons\check_30x30.png" />
-    <None Remove="Icons\open-file_20x20.png" />
-  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Icons\open-file_20x20.png" />
