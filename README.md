@@ -8,6 +8,8 @@
    2. [Exporting single brush](#exporting-single-brush)
 ---
 
+<img alt="textureSupportExample" src="./textureSupportExample.jpg" />
+
 ## Description
 Converts t3d brush files from Unreal Engine 1.5 to obj format and vice-versa. Allows to edit Unreal's brushes in regular 3D editors.
 There is acually 3 functionalities as all of them are usefull while moving files between Blender and UnrealEd.
