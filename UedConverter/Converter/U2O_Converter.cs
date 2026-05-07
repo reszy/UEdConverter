@@ -4,10 +4,19 @@ using static UedConverter.Converter.FileUtils.T3dFile;
 
 namespace UedConverter.Converter;
 
-public class U2O_Converter(bool loadTextureData) : IUedConverter
+public class U2O_Converter : IUedConverter
 {
+    public U2O_Converter(bool loadTextureData)
+    {
+        textureData = loadTextureData ? TextureSizeDictionary.Load() : [];
+    }
 
-    private readonly Dictionary<string, USize> textureData = loadTextureData ? TextureSizeDictionary.Load() : [];
+    public U2O_Converter(Dictionary<string, USize> textureData)
+    {
+        this.textureData = textureData;
+    }
+
+    private readonly Dictionary<string, USize> textureData;
     private const double toObjScale = 0.01;
     public HashSet<string> MissingTextureData { get; private set; } = [];
 
@@ -15,10 +24,11 @@ public class U2O_Converter(bool loadTextureData) : IUedConverter
     {
         MissingTextureData = [];
         List<Polygon> polygons = T3dFileReader.Read(input);
-        return ConvertToObj(polygons);
+        var file = ConvertToObj(polygons);
+        return file.Write();
     }
 
-    private string[] ConvertToObj(List<Polygon> polygons)
+    public ObjFile ConvertToObj(List<Polygon> polygons)
     {
         ObjFile file = new()
         {
@@ -51,7 +61,7 @@ public class U2O_Converter(bool loadTextureData) : IUedConverter
             file.AddFace(face);
             polygonNumber++;
         }
-        return file.Write();
+        return file;
     }
 
     private static V3d ConvertAxisToObj(V3d input)

@@ -3,20 +3,23 @@ using static UedConverter.Converter.FileUtils.T3dFile;
 
 namespace UedConverter.Converter;
 
-class O2U_Converter : IUedConverter
+public class O2U_Converter : IUedConverter
 {
     private const double toT3dScale = 100.0;
     public string[] Convert(string[] input)
     {
         var data = ObjFile.ObjFileReader.Read(input);
-        return ConvertToT3d(data);
+        var file = ConvertToT3d(data);
+        return file.Write();
     }
 
-    public static string[] ConvertToT3d(ObjFile data)
+    public T3dFile ConvertToT3d(ObjFile data)
     {
+        string? texture = null;
         List<Polygon> polygons = [];
         foreach(var face in data.Faces)
         {
+            texture = (face.material ?? texture);
             List<V3d> vertexes = [];
             foreach (var component in face.faceComponents)
             {
@@ -24,12 +27,13 @@ class O2U_Converter : IUedConverter
             }
             Polygon polygon = new()
             {
-                Vertexes = vertexes
+                Vertexes = vertexes,
+                Texture = face.material,
+                Normal = data.VertexNormals[face.faceComponents[0].vertexNormalRef - 1]// (vertexes[1] - vertexes[0]).Cross(vertexes[2] - vertexes[0]).Normalize()
             };
             polygons.Add(polygon);
         }
-        T3dFile file = new(polygons);
-        return file.Write();
+        return new(polygons);
     }
 
     private static V3d ConvertAxisToT3d(V3d input)

@@ -75,4 +75,33 @@ public class V3d
     {
         return Math.Sqrt(X * X + Y * Y + Z * Z);
     }
+
+    public V3d Cross(V3d v)
+    {
+        return new(
+            Y * v.Z - Z * v.Y,
+            Z * v.X - X * v.Z,
+            X * v.Y - Y * v.Z
+            );
+    }
+
+    public V3d Normalize()
+    {
+        var mag = Magnitude();
+        return new V3d(X / mag, Y / mag, Z / mag);
+    }
+
+    public bool Equals(object? obj, double threshold)
+    {
+        if (obj != null && obj is V3d other)
+        {
+            return Compare(X, other.X, threshold) && Compare(Y, other.Y, threshold) && Compare(Z, other.Z, threshold);
+        }
+        return false;
+    }
+
+    private static bool Compare(double a, double b, double threshold)
+    {
+        return Math.Abs(a - b) < threshold;
+    }
 }

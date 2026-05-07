@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DoubleConvertionTest.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MSTest" Version="4.0.2" />
   </ItemGroup>
 
